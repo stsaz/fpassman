@@ -1,0 +1,90 @@
+
+OBJ_DIR := .
+
+OSBINS :=
+ifeq ($(OS),win)
+OSBINS := fpassman-gui.exe
+endif
+
+all: ff $(BIN) $(OSBINS)
+
+include $(FF)/makerules
+include $(FF3PT)/makerules
+FF_ALL_OBJS := $(FFOS_OBJ) $(FF_OBJ) $(FF_OBJ_DIR)/ffconf.o $(FF_OBJ_DIR)/ffjson.o $(FF_OBJ_DIR)/ffparse.o $(FF_OBJ_DIR)/ffpic.o $(FF_OBJ_DIR)/ffutf8.o $(FF_OBJ_DIR)/ffdbg.o
+SHA_OBJ := $(FF_OBJ_DIR)/sha256.o $(FF_OBJ_DIR)/sha1.o
+AES_C := $(wildcard $(FF3PT)/aes/*.c)
+AES_OBJ := $(addprefix $(FF_OBJ_DIR)/, $(addsuffix .o, $(notdir $(basename $(AES_C)))))
+
+$(OBJ_DIR)/%.o: $(SRCDIR)/%.c $(wildcard $(SRCDIR)/*.h) $(FF_HDR)
+	$(C)  $(CFLAGS) $<  -o$@
+
+
+ifeq ($(OS),win)
+
+$(OBJ_DIR)/%.o: $(SRCDIR)/gui/%.c $(wildcard $(SRCDIR)/*.h) $(FF_HDR)
+	$(C)  $(CFLAGS) $<  -o$@
+
+$(OBJ_DIR)/fpassman.coff: $(PROJDIR)/fpassman.rc $(PROJDIR)/fpassman.ico
+	$(WINDRES) -I$(SRCDIR) -I$(FF) -I$(FFOS) $(PROJDIR)/fpassman.rc $@
+
+#
+BINGUI_O := \
+	$(OBJ_DIR)/db.o $(OBJ_DIR)/dbf-json.o \
+	$(OBJ_DIR)/core.o \
+	$(OBJ_DIR)/gui.o \
+	$(OBJ_DIR)/fpassman.coff \
+	$(FF_ALL_OBJS) \
+	$(FF_OBJ_DIR)/ffpsarg.o \
+	$(FF_GUI_OBJ) $(SHA_OBJ) $(AES_OBJ)
+fpassman-gui.exe: $(BINGUI_O)
+	$(LD) $(LDFLAGS) $(BINGUI_O) -lshell32 -luxtheme -lcomctl32 -lcomdlg32 -lgdi32 -lws2_32 -lole32 -luuid -lz-ff -mwindows -o$@
+
+endif
+
+
+#
+BIN_O = \
+	$(OBJ_DIR)/tui.o \
+	$(OBJ_DIR)/core.o $(OBJ_DIR)/db.o $(OBJ_DIR)/dbf-json.o \
+	$(FF_ALL_OBJS) \
+	$(FF_OBJ_DIR)/ffpsarg.o \
+	$(SHA_OBJ) $(AES_OBJ)
+ifeq ($(OS),win)
+BIN_O += $(OBJ_DIR)/fpassman.coff
+endif
+$(BIN): $(BIN_O)
+	$(LD) $(LDFLAGS) $(LD_RPATH_ORIGIN) $(BIN_O) -lz-ff -o$@
+
+
+clean:
+	rm -f $(BIN) $(OSBINS) *.debug $(OBJ) $(OBJ_DIR)/fpassman.coff
+
+
+strip: $(BINS:.$(SO)=.$(SO).debug) $(BIN).debug $(BINS:.exe=.exe.debug) $(OSBINS:.exe=.exe.debug)
+
+
+install-only: all
+	mkdir -vp $(INSTDIR)
+	$(CP) \
+		$(FF3PTLIB)/libz-ff.$(SO) \
+		$(BIN) \
+		$(PROJDIR)/fpassman.conf $(PROJDIR)/help.txt \
+		$(PROJDIR)/README.txt \
+		$(INSTDIR)/
+
+ifeq ($(OS),win)
+	$(CP) \
+		fpassman-gui.exe \
+		$(PROJDIR)/src/gui/fpassman.gui \
+		$(INSTDIR)/
+	unix2dos $(INSTDIR)/*.txt $(INSTDIR)/*.conf $(INSTDIR)/*.gui
+endif
+
+
+installd: all
+	$(MAKE) -f $(firstword $(MAKEFILE_LIST)) install-only
+install: all
+	$(MAKE) -f $(firstword $(MAKEFILE_LIST)) strip
+	$(MAKE) -f $(firstword $(MAKEFILE_LIST)) install-only
+package-all: install
+	$(MAKE) -f $(firstword $(MAKEFILE_LIST)) package

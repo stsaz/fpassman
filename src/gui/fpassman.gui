@@ -1,0 +1,325 @@
+# fpassman v1.0 GUI
+
+menu mfile {
+	item "&Open..." {
+		action DB_OPEN
+		hotkey "Ctrl+O"
+	}
+	item "&Save" {
+		action DB_SAVE
+		hotkey "Ctrl+S"
+	}
+	item "Save &As..." {
+		action DB_SAVEAS
+		hotkey "Ctrl+Shift+S"
+	}
+	item "&Close database" {
+		action DB_CLOSE
+		hotkey "Ctrl+W"
+	}
+	item "-" {
+	}
+	item "Minimize to Tray" {
+		action PM_MINTOTRAY
+		hotkey "Ctrl+M"
+	}
+	item "E&xit" {
+		action PM_QUIT
+	}
+}
+
+menu mgroup {
+	item "&Delete" {
+		action GRP_DEL
+	}
+}
+
+menu mentry {
+	item "&New..." {
+		action ENT_NEW
+		hotkey "Ctrl+N"
+	}
+	item "&Edit..." {
+		action ENT_EDIT
+		hotkey "Ctrl+Space"
+	}
+	item "&Delete" {
+		action ENT_DEL
+		hotkey "Shift+Delete"
+	}
+	item "&Filter..." {
+		action ENT_FINDSHOW
+		hotkey "Ctrl+F"
+	}
+}
+
+menu mhelp {
+	item "&About" {
+		action PM_ABOUT
+	}
+}
+
+menu mtray {
+	item "fpassman" {
+		style default
+		action PM_SHOW
+	}
+	item "Exit" {
+		action PM_QUIT
+	}
+}
+
+dialog dlg {
+}
+
+window wmain {
+	title "fpassman"
+	position 100 100 900 500
+	borderstick 7
+	style visible
+	icon {
+		resource 2
+	}
+
+	trayicon trayicon {
+		style visible
+		icon {
+			resource 2
+		}
+		popupmenu mtray
+		lclick PM_SHOW
+	}
+
+	mainmenu mm {
+		item "&File" {
+			submenu mfile
+		}
+		item "&Group" {
+			submenu mgroup
+		}
+		item "&Entry" {
+			submenu mentry
+		}
+		item "&Help" {
+			submenu mhelp
+		}
+	}
+
+	treeview grps {
+		position 0 0 100 400
+		style visible explorer_theme full_row_select track_select
+		chsel GRP_SEL
+	}
+
+	listview area {
+		position 105 0 300 400
+		style visible explorer_theme grid_lines
+		chsel AREA_CHSEL
+		dblclick AREA_ACTION
+
+		column Title {
+			width 150
+		}
+		column User {
+			width 150
+		}
+		column Password {
+		}
+		column URL {
+			width 150
+		}
+		column Notes {
+			width 150
+		}
+		column Modified {
+			width 150
+		}
+	}
+
+	paned pn {
+		child grps {
+			resize cy
+		}
+		child area {
+			resize cx cy
+		}
+	}
+
+	statusbar stbar {
+		style visible
+	}
+}
+
+window wentry {
+	parent wmain
+	position 300 300 400 200
+	style popup
+	opacity 90
+	onclose ENT_CANCEL
+	font {
+		name Arial
+		height 10
+	}
+
+	editbox eEntTitle {
+		position 10 10 150 20
+		style visible
+		// label Title
+	}
+
+	editbox eEntUsername {
+		position 10 40 130 20
+		style visible
+		// label Username
+	}
+
+	button bEntCopyUsername {
+		position 140 40 20 20
+		style visible
+		text C
+		tooltip "Copy to clipboard"
+		action ENT_COPYUSENAME
+	}
+
+	editbox eEntPassword {
+		position 10 70 130 20
+		style visible
+		// label Password
+	}
+
+	button bEntCopyPasswd {
+		position 140 70 20 20
+		style visible
+		text C
+		tooltip "Copy to clipboard"
+		action ENT_COPYPASSWD
+	}
+
+	editbox eEntUrl {
+		position 10 100 150 20
+		style visible
+		// label URL
+	}
+
+	editbox eEntTag {
+		position 170 10 150 20
+		style visible
+	}
+
+	text eEntNotes {
+		position 170 40 150 110
+		style visible
+		// label Notes
+	}
+
+	button bEntOk {
+		position 10 130 50 20
+		style visible
+		text "&Apply"
+		action ENT_DONE
+	}
+	paned pn_notes {
+		child eEntNotes {
+			resize cx cy
+		}
+	}
+}
+
+window wdb {
+	parent wmain
+	position 300 300 300 200
+	style popup
+	opacity 90
+	font {
+		name Arial
+		height 10
+	}
+
+	editbox edbfn {
+		position 10 10 150 20
+		style visible
+		// label Filename
+	}
+
+	button bbrowse {
+		position 160 10 20 20
+		text "..."
+		style visible
+		action DB_BROWSE
+	}
+
+	editbox edbpass {
+		position 10 35 100 20
+		style visible password
+		// label Password
+	}
+
+	editbox edbpass2 {
+		position 10 60 100 20
+		style password
+		// label "Retype Password"
+	}
+
+	button bdbdo {
+		position 10 85 50 20
+		style visible
+		action DB_DO
+	}
+}
+
+window wfind {
+	title "Filter"
+	parent wmain
+	position 100 100 150 100
+	style popup
+	opacity 90
+	font {
+		name Arial
+		height 10
+	}
+
+	editbox efind {
+		position 5 5 140 20
+		style visible
+		onchange ENT_FIND
+	}
+}
+
+window wabout {
+	parent wmain
+	title "About fpassman"
+	position 300 300 425 175
+	style popup
+	opacity 90
+
+	image ico {
+		style visible
+		position 0 5 85 85
+		icon {
+			resource 2
+			size 128 128
+		}
+	}
+
+	label labout {
+		position 130 15 300 80
+		style visible
+		font {
+			name Arial
+			height 12
+		}
+	}
+
+	label lurl {
+		position 130 100 250 25
+		style visible
+		font {
+			name Arial
+			height 12
+			style underline
+		}
+		cursor hand
+		color blue
+		onclick OPEN_HOMEPAGE
+	}
+}

@@ -1,0 +1,8 @@
+Usage:
+fpassman --db=DBFILE [OPTIONS]
+
+Options:
+-d, --db=DBFILE   Set database file
+-f, --filter=STR  Set filter
+
+-h, --help   Print help info and exit
