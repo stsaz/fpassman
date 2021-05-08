@@ -23,7 +23,7 @@ entries:[
 #include <FFOS/file.h>
 
 #include <zlib/zlib-ff.h>
-#include <aes/aes.h>
+#include <aes/aes-ff.h>
 #include <sha/sha256.h>
 #include <sha1/sha1.h>
 
@@ -220,7 +220,7 @@ static int dbf_ents(ffparser_schem *ps, void *obj, ffpars_ctx *ctx)
 
 static void dbf_keyinit(byte *key, const char *passwd, size_t len)
 {
-	sha256_buffer(passwd, len, key);
+	sha256_hash(passwd, len, key);
 }
 
 static int dbf_open(fpm_db *db, const char *fn, const byte *key)
@@ -237,7 +237,7 @@ static int dbf_open(fpm_db *db, const char *fn, const byte *key)
 	fffd f = FF_BADFD;
 	size_t n;
 	z_ctx *lz = NULL;
-	aes_decrypt_ctx de;
+	aes_ctx de;
 	byte iv[16];
 	byte *dst;
 	set_iv(iv, key);
@@ -248,9 +248,8 @@ static int dbf_open(fpm_db *db, const char *fn, const byte *key)
 	if (FF_BADFD == (f = fffile_open(fn, O_RDONLY)))
 		return FFERR_FOPEN;
 
-	ffmem_zero(&de, sizeof(aes_decrypt_ctx));
-	if (0 != aes_decrypt_key(key, FPM_DB_KEYLEN, &de)) {
-		errlog("aes_decrypt_key()", 0);
+	if (0 != aes_decrypt_init(&de, key, FPM_DB_KEYLEN, AES_CBC)) {
+		errlog("aes_decrypt_init()", 0);
 		goto done;
 	}
 
@@ -287,9 +286,9 @@ static int dbf_open(fpm_db *db, const char *fn, const byte *key)
 	case R_DECRYPT:
 		dst = (void*)decrypted.ptr;
 		while (data.len != 0) {
-			int len2 = (int)ffmin(data.len, 1024);
-			if (0 != aes_cbc_decrypt((byte*)data.ptr, dst, len2, iv, &de)) {
-				errlog("aes_cbc_decrypt()", 0);
+			size_t len2 = ffmin(data.len, 1024);
+			if (0 != aes_decrypt_chunk(&de, (byte*)data.ptr, dst, len2, iv)) {
+				errlog("aes_decrypt_chunk()", 0);
 				goto done;
 			}
 			ffstr_shift(&data, len2);
@@ -355,13 +354,14 @@ ok:
 	r = 0;
 
 done:
+	aes_decrypt_free(&de);
 	FF_SAFECLOSE(lz, NULL, z_inflate_free);
-	ffarr_zero(&plain);
+	ffmem_zero(plain.ptr, plain.len);
 	ffstr_free(&plain);
-	ffarr_zero(&decrypted);
+	ffmem_zero(decrypted.ptr, decrypted.len);
 	ffstr_free(&decrypted);
 	ffstr_free(&fbuf);
-	ffarr_zero(&js.buf);
+	ffmem_zero(js.buf.ptr, js.buf.len);
 	ffjson_parseclose(&js);
 	ffpars_schemfree(&ps);
 	fffile_safeclose(f);
@@ -407,19 +407,19 @@ static void set_iv(byte iv[16], const byte *key)
 
 static int encrypt(fpm_db *db, ffstr *src, ffstr *dststr, const byte *key)
 {
-	aes_encrypt_ctx en;
+	aes_ctx en;
 	byte iv[16];
 	byte *dst;
 	ffstr buf = {};
 	ffarr d = {};
 	char tmp[1024];
+	int r = 1;
 
 	if (NULL == ffstr_alloc(&buf, BUFSIZE))
 		goto done;
 	dst = (void*)buf.ptr;
 
-	ffmem_zero(&en, sizeof(aes_encrypt_ctx));
-	if (0 != aes_encrypt_key(key, FPM_DB_KEYLEN, &en))
+	if (0 != aes_encrypt_init(&en, key, FPM_DB_KEYLEN, AES_CBC))
 		goto done;
 	set_iv(iv, key);
 
@@ -437,7 +437,7 @@ static int encrypt(fpm_db *db, ffstr *src, ffstr *dststr, const byte *key)
 			src->len = len2;
 		}
 
-		if (0 != aes_cbc_encrypt((byte*)src->ptr, dst, (int)len2, iv, &en))
+		if (0 != aes_encrypt_chunk(&en, (byte*)src->ptr, dst, len2, iv))
 			goto done;
 		ffstr_shift(src, len2);
 		if (NULL == ffarr_grow(&d, len2, 512))
@@ -446,12 +446,14 @@ static int encrypt(fpm_db *db, ffstr *src, ffstr *dststr, const byte *key)
 	}
 
 	ffstr_set(dststr, d.ptr, d.len);
-	return 0;
+	r = 0;
 
 done:
+	aes_encrypt_free(&en);
 	ffstr_free(&buf);
-	ffarr_free(&d);
-	return 1;
+	if (r != 0)
+		ffarr_free(&d);
+	return r;
 }
 
 static int file_save(const char *fn, ffstr *dst)

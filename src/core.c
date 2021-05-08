@@ -108,7 +108,7 @@ static int core_setroot(const char *argv0)
 		return 1;
 	if (NULL != ffpath_split2(p, ffsz_len(p), &path, NULL)) {
 		path.len += FFSLEN("/");
-		if (NULL == ffstr_copy(&pm->root, path.ptr, path.len))
+		if (NULL == ffstr_dup(&pm->root, path.ptr, path.len))
 			return 1;
 	}
 	return 0;

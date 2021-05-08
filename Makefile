@@ -7,6 +7,7 @@ VER :=
 OS :=
 OPT := LTO3
 
+FFBASE := $(ROOT)/ffbase
 FFOS := $(ROOT)/ffos
 FF := $(ROOT)/ff
 FF3PT := $(ROOT)/ff-3pt
@@ -18,7 +19,7 @@ include $(FFOS)/makeconf
 ifeq ($(OS),win)
 BIN := fpassman.exe
 INSTDIR := fpassman
-CFLAGS += -DFF_WIN=0x0501
+CFLAGS += -DFF_WIN_APIVER=0x0501
 
 else
 BIN := fpassman
@@ -34,7 +35,7 @@ FF3PT_CFLAGS := $(CFLAGS)
 
 
 CFLAGS += $(ALL_CFLAGS) -Wall -Werror -pthread \
-	-I$(SRCDIR) -I$(FF) -I$(FFOS) -I$(FF3PT)
+	-I$(SRCDIR) -I$(FF) -I$(FFOS) -I$(FFBASE) -I$(FF3PT)
 
 LDFLAGS += -pthread \
 	-fvisibility=hidden -Wl,-gc-sections -L$(FF3PTLIB)

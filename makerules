@@ -10,10 +10,13 @@ all: ff $(BIN) $(OSBINS)
 
 include $(FF)/makerules
 include $(FF3PT)/makerules
-FF_ALL_OBJS := $(FFOS_OBJ) $(FF_OBJ) $(FF_OBJ_DIR)/ffconf.o $(FF_OBJ_DIR)/ffjson.o $(FF_OBJ_DIR)/ffparse.o $(FF_OBJ_DIR)/ffpic.o $(FF_OBJ_DIR)/ffutf8.o $(FF_OBJ_DIR)/ffdbg.o
-SHA_OBJ := $(FF_OBJ_DIR)/sha256.o $(FF_OBJ_DIR)/sha1.o
-AES_C := $(wildcard $(FF3PT)/aes/*.c)
-AES_OBJ := $(addprefix $(FF_OBJ_DIR)/, $(addsuffix .o, $(notdir $(basename $(AES_C)))))
+FF_ALL_OBJS := $(FFOS_OBJ) $(FF_OBJ) \
+	$(FF_OBJ_DIR)/ffconf.o \
+	$(FF_OBJ_DIR)/ffjson.o \
+	$(FF_OBJ_DIR)/ffparse.o \
+	$(FF_OBJ_DIR)/ffpic.o \
+	$(FF_OBJ_DIR)/ffutf8.o
+SHA_OBJ := $(FF_OBJ_DIR)/sha256.o $(FF_OBJ_DIR)/sha256-ff.o $(FF_OBJ_DIR)/sha1.o
 
 $(OBJ_DIR)/%.o: $(SRCDIR)/%.c $(wildcard $(SRCDIR)/*.h) $(FF_HDR)
 	$(C)  $(CFLAGS) $<  -o$@
@@ -25,7 +28,7 @@ $(OBJ_DIR)/%.o: $(SRCDIR)/gui/%.c $(wildcard $(SRCDIR)/*.h) $(FF_HDR)
 	$(C)  $(CFLAGS) $<  -o$@
 
 $(OBJ_DIR)/fpassman.coff: $(PROJDIR)/fpassman.rc $(PROJDIR)/fpassman.ico
-	$(WINDRES) -I$(SRCDIR) -I$(FF) -I$(FFOS) $(PROJDIR)/fpassman.rc $@
+	$(WINDRES) -I$(SRCDIR) -I$(FF) -I$(FFOS) -I$(FFBASE) $(PROJDIR)/fpassman.rc $@
 
 #
 BINGUI_O := \
@@ -35,7 +38,7 @@ BINGUI_O := \
 	$(OBJ_DIR)/fpassman.coff \
 	$(FF_ALL_OBJS) \
 	$(FF_OBJ_DIR)/ffpsarg.o \
-	$(FF_GUI_OBJ) $(SHA_OBJ) $(AES_OBJ)
+	$(FF_GUI_OBJ) $(SHA_OBJ) $(FF3PTLIB)/AES-ff.a
 fpassman-gui.exe: $(BINGUI_O)
 	$(LD) $(LDFLAGS) $(BINGUI_O) -lshell32 -luxtheme -lcomctl32 -lcomdlg32 -lgdi32 -lws2_32 -lole32 -luuid -lz-ff -mwindows -o$@
 
@@ -48,7 +51,7 @@ BIN_O = \
 	$(OBJ_DIR)/core.o $(OBJ_DIR)/db.o $(OBJ_DIR)/dbf-json.o \
 	$(FF_ALL_OBJS) \
 	$(FF_OBJ_DIR)/ffpsarg.o \
-	$(SHA_OBJ) $(AES_OBJ)
+	$(SHA_OBJ) $(FF3PTLIB)/AES-ff.a
 ifeq ($(OS),win)
 BIN_O += $(OBJ_DIR)/fpassman.coff
 endif

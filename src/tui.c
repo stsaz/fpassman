@@ -54,7 +54,7 @@ static int pm_help(ffparser_schem *p, void *obj)
 	if (NULL == (fn = core->getpath(FFSTR("help.txt"))))
 		return FFPARS_ESYS;
 
-	f = fffile_open(fn, O_RDONLY | O_NOATIME);
+	f = fffile_open(fn, FFFILE_READONLY | FFFILE_NOATIME);
 	ffmem_free(fn);
 	if (f == FF_BADFD)
 		return FFPARS_ELAST;
@@ -180,6 +180,16 @@ static void ent_print(const char *filter, size_t len)
 	fffile_write(ffstdout, buf.ptr, buf.len);
 	ffarr_free(&buf);
 	ffarr_free(&list);
+}
+
+/** Find end-of-line marker (LF or CRLF).
+Return byte offset or 'len' if not found. */
+static inline ffsize ffs_findeol(const char *s, ffsize len)
+{
+	const char *p = ffs_find(s, len, '\n');
+	if (p != s && p[-1] == '\r')
+		p--;
+	return p - s;
 }
 
 static int tui_run()

@@ -76,7 +76,7 @@ static fpm_dbentry* db_ent(uint cmd, fpm_db *db, fpm_dbentry *ent)
 	case FPM_DB_NEXT: {
 		dbentry *prev = FF_GETPTR(dbentry, e, ent);
 		fflist_item *it;
-		it = (ent == NULL) ? db->ents.first : prev->sib.next;
+		it = (ent == NULL) ? fflist_first(&db->ents) : prev->sib.next;
 		if (it == fflist_sentl(&db->ents))
 			return NULL;
 		e = FF_GETPTR(dbentry, sib, it);
@@ -166,7 +166,7 @@ static int db_grp_add(fpm_db *db, fpm_dbgroup *grp)
 static int db_grp_del(fpm_db *db, uint i)
 {
 	dbentry *ent;
-	FFLIST_WALK(&db->ents, ent, sib) {
+	_FFLIST_WALK(&db->ents, ent, sib) {
 		if (ent->e.grp == i)
 			ent->e.grp = -1;
 		else if (ent->e.grp > (int)i)
