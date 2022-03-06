@@ -3,20 +3,20 @@ Copyright (c) 2018 Simon Zolin
 */
 
 #include <fpassman.h>
-
-#include <FF/array.h>
-#include <FF/time.h>
-#include <FF/list.h>
+#include <ffbase/vector.h>
+#include <ffbase/list.h>
+#include <FFOS/time.h>
+#include <FFOS/error.h>
 
 
 typedef struct dbentry {
 	fpm_dbentry e;
 
-	fflist_item sib;
+	ffchain_item sib;
 } dbentry;
 
 struct fpm_db {
-	ffarr grps; //fpm_dbgroup[]
+	ffvec grps; //fpm_dbgroup[]
 	fflist ents; //dbentry[]
 };
 
@@ -57,11 +57,11 @@ static fpm_dbentry* db_ent(uint cmd, fpm_db *db, fpm_dbentry *ent)
 		if (NULL == (e = ffmem_new(dbentry)))
 			return NULL;
 		e->e = *ent;
-		fflist_ins(&db->ents, &e->sib);
+		fflist_add(&db->ents, &e->sib);
 		return &e->e;
 
 	case FPM_DB_RM:
-		e = FF_GETPTR(dbentry, e, ent);
+		e = FF_STRUCTPTR(dbentry, e, ent);
 		fflist_rm(&db->ents, &e->sib);
 		dbentry_free(e);
 		break;
@@ -74,12 +74,12 @@ static fpm_dbentry* db_ent(uint cmd, fpm_db *db, fpm_dbentry *ent)
 	}
 
 	case FPM_DB_NEXT: {
-		dbentry *prev = FF_GETPTR(dbentry, e, ent);
-		fflist_item *it;
+		dbentry *prev = FF_STRUCTPTR(dbentry, e, ent);
+		ffchain_item *it;
 		it = (ent == NULL) ? fflist_first(&db->ents) : prev->sib.next;
 		if (it == fflist_sentl(&db->ents))
 			return NULL;
-		e = FF_GETPTR(dbentry, sib, it);
+		e = FF_STRUCTPTR(dbentry, sib, it);
 		return &e->e;
 	}
 
@@ -103,6 +103,25 @@ static void dbgrp_fin(fpm_dbgroup *g)
 	ffstr_free(&g->name);
 }
 
+/** Call func() for every item in list.
+A list item pointer is translated (by offset in a structure) into an object.
+Example:
+fflist mylist;
+struct mystruct_t {
+	...
+	ffchain_item sibling;
+};
+FFLIST_ENUMSAFE(&mylist, ffmem_free, struct mystruct_t, sibling); */
+#define FFLIST_ENUMSAFE(lst, func, struct_name, member_name) \
+do { \
+	ffchain_item *li; \
+	for (li = (lst)->root.next;  li != fflist_sentl(lst); ) { \
+		void *p = FF_STRUCTPTR(struct_name, member_name, li); \
+		li = li->next; \
+		func(p); \
+	} \
+} while (0)
+
 static void db_fin(fpm_db *db)
 {
 	fpm_dbgroup *grp;
@@ -110,10 +129,10 @@ static void db_fin(fpm_db *db)
 	FFLIST_ENUMSAFE(&db->ents, dbentry_free, dbentry, sib);
 	fflist_init(&db->ents);
 
-	FFARR_WALKT(&db->grps, grp, fpm_dbgroup) {
+	FFSLICE_WALK(&db->grps, grp) {
 		dbgrp_fin(grp);
 	}
-	ffarr_free(&db->grps);
+	ffvec_free(&db->grps);
 }
 
 static int db_find(fpm_dbentry *ent, const char *search, size_t len)
@@ -122,7 +141,7 @@ static int db_find(fpm_dbentry *ent, const char *search, size_t len)
 	ffstr_set(&src, search, len);
 
 	while (src.len != 0) {
-		ffstr_nextval3(&src, &s, ' ');
+		ffstr_splitby(&src, ' ', &s, &src);
 
 		if (ffstr_ifind(&ent->title, s.ptr, s.len) >= 0
 			|| ffstr_ifind(&ent->username, s.ptr, s.len) >= 0
@@ -147,7 +166,7 @@ static fpm_dbgroup* db_grp(fpm_db *db, uint i)
 static int db_grp_find(fpm_db *db, const char *name, size_t len)
 {
 	fpm_dbgroup *g;
-	FFARR_WALKT(&db->grps, g, fpm_dbgroup) {
+	FFSLICE_WALK(&db->grps, g) {
 		if (ffstr_ieq(&g->name, name, len))
 			return g - (fpm_dbgroup*)db->grps.ptr;
 	}
@@ -156,7 +175,7 @@ static int db_grp_find(fpm_db *db, const char *name, size_t len)
 
 static int db_grp_add(fpm_db *db, fpm_dbgroup *grp)
 {
-	fpm_dbgroup *g = ffarr_pushT(&db->grps, fpm_dbgroup);
+	fpm_dbgroup *g = ffvec_pushT(&db->grps, fpm_dbgroup);
 	if (g == NULL)
 		return -1;
 	*g = *grp;
@@ -165,14 +184,15 @@ static int db_grp_add(fpm_db *db, fpm_dbgroup *grp)
 
 static int db_grp_del(fpm_db *db, uint i)
 {
-	dbentry *ent;
-	_FFLIST_WALK(&db->ents, ent, sib) {
+	ffchain_item *it;
+	FFLIST_WALK(&db->ents, it) {
+		dbentry *ent = FF_STRUCTPTR(dbentry, sib, it);
 		if (ent->e.grp == i)
 			ent->e.grp = -1;
 		else if (ent->e.grp > (int)i)
 			ent->e.grp--;
 	}
 
-	_ffarr_rm(&db->grps, i, 1, sizeof(fpm_dbgroup));
+	ffslice_rm((ffslice*)&db->grps, i, 1, sizeof(fpm_dbgroup));
 	return 0;
 }

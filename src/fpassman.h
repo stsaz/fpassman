@@ -3,8 +3,10 @@ Copyright (c) 2018 Simon Zolin
 */
 
 #pragma once
-
-#include <FF/string.h>
+#include <FFOS/string.h>
+#include <FFOS/std.h>
+typedef ffbyte byte;
+typedef ffuint uint;
 
 
 // CORE
@@ -16,6 +18,7 @@ Copyright (c) 2018 Simon Zolin
 
 struct fpm_conf {
 	ffstr loaddb;
+	char *loaddb_z;
 };
 
 struct fpm_core {
@@ -25,11 +28,11 @@ struct fpm_core {
 	int (*loadconf)(void);
 };
 
-FF_EXTN const struct fpm_core* core_init();
-FF_EXTN void core_free();
+FF_EXTERN const struct fpm_core* core_init();
+FF_EXTERN void core_free();
 
 #define errlog(fmt, ...) \
-	fffile_fmt(ffstderr, NULL, fmt "\n", __VA_ARGS__)
+	ffstderr_fmt(fmt "\n", ##__VA_ARGS__)
 
 
 // DB

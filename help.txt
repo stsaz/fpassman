@@ -1,5 +1,5 @@
 Usage:
-fpassman --db=DBFILE [OPTIONS]
+fpassman [OPTIONS]
 
 Options:
 -d, --db=DBFILE   Set database file

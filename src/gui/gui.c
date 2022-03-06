@@ -2,11 +2,12 @@
 Copyright (c) 2018 Simon Zolin
 */
 
+#include <util/gui-winapi/winapi-shell.h>
 #include <gui/gui.h>
-
-#include <FF/gui/loader.h>
-#include <FF/time.h>
+#include <util/gui-winapi/loader.h>
+#include <ffbase/time.h>
 #include <FFOS/file.h>
+#include <FFOS/ffos-extern.h>
 
 
 const struct fpm_core *core;
@@ -174,7 +175,7 @@ static void* getctl(void *udata, const ffstr *name)
 static int getcmd(void *udata, const ffstr *name)
 {
 	int i;
-	for (i = 0;  i < FFCNT(scmds);  i++) {
+	for (i = 0;  i < FF_COUNT(scmds);  i++) {
 		if (ffstr_eqz(name, scmds[i]))
 			return i + 1;
 	}
@@ -304,11 +305,12 @@ static void area_setitem(fpm_dbentry *ent, int i)
 	ffui_view_set(&g->wmain.area, H_NOTES, &it);
 
 	fftime t = {};
-	t.sec = ent->mtime;
-	ffdtm dt;
+	t.sec = ent->mtime + FFTIME_1970_SECONDS;
+	// TODO local time
+	ffdatetime dt;
 	char stime[32];
-	fftime_split(&dt, &t, FFTIME_TZLOCAL);
-	size_t n = fftime_tostr(&dt, stime, sizeof(stime), FFTIME_YMD);
+	fftime_split1(&dt, &t);
+	size_t n = fftime_tostr1(&dt, stime, sizeof(stime), FFTIME_YMD);
 	ffui_view_settext(&it, stime, n);
 	ffui_view_set(&g->wmain.area, H_MODTIME, &it);
 }
@@ -360,7 +362,7 @@ static void ent_clear(void)
 static void area_status(void)
 {
 	char b[1024];
-	size_t r = ffs_fmt(b, b + FFCNT(b), "%u items", (int)ffui_view_nitems(&g->wmain.area));
+	size_t r = ffs_format_r0(b, FF_COUNT(b), "%u items", (int)ffui_view_nitems(&g->wmain.area));
 	ffui_stbar_settext(&g->wmain.stbar, 0, b, r);
 }
 
@@ -508,7 +510,7 @@ static void wdb_load(void)
 	r = dbfif->open(g->dbx, fn.ptr, key);
 	if (r != 0) {
 		char buf[1024];
-		ffs_fmt(buf, buf + FFCNT(buf), "Error: %e: %E%Z", r, fferr_last());
+		ffs_format_r0(buf, FF_COUNT(buf), "Error: %e: %E%Z", r, fferr_last());
 		wmain_status(buf);
 		goto done;
 	}
@@ -516,7 +518,7 @@ static void wdb_load(void)
 
 	g->saved_fn = fn.ptr;
 	fn.ptr = NULL;
-	ffmemcpy(g->saved_key, key, sizeof(key));
+	memcpy(g->saved_key, key, sizeof(key));
 	g->saved_key_valid = 1;
 
 	area_fill();
@@ -548,7 +550,7 @@ static int dosave(const char *fn, const byte *key)
 	r = dbfif->save(g->dbx, fn, key);
 	if (r != 0) {
 		char buf[1024];
-		ffs_fmt(buf, buf + FFCNT(buf), "Error: %e: %E%Z", r, fferr_last());
+		ffs_format_r0(buf, FF_COUNT(buf), "Error: %e: %E%Z", r, fferr_last());
 		wmain_status(buf);
 		return 1;
 	}
@@ -727,7 +729,7 @@ static void wdb_on_action(ffui_wnd *wnd, int id)
 
 static void pm_on_action(ffui_wnd *wnd, int id)
 {
-	fffile_fmt(ffstdout, NULL, "pm_on_action(): id: %u\n", id);
+	// fflog("pm_on_action(): id: %u", id);
 
 	switch (id) {
 	case AREA_CHSEL:
@@ -930,11 +932,11 @@ static int gui_run(void)
 	ffmem_free(fn);
 
 	if (r != 0) {
-		ffstr3 msg = {};
-		ffstr_catfmt(&msg, "fpassman.gui: %s\n", ffui_ldr_errstr(&ldr));
+		ffvec msg = {};
+		ffvec_addfmt(&msg, "fpassman.gui: %s\n", ffui_ldr_errstr(&ldr));
 		fffile_write(ffstderr, msg.ptr, msg.len);
 		ffui_msgdlg_show("fpassman", msg.ptr, msg.len, FFUI_MSGDLG_ERR);
-		ffarr_free(&msg);
+		ffvec_free(&msg);
 		ffui_ldr_fin(&ldr);
 		goto done;
 	}
@@ -951,7 +953,7 @@ static int gui_run(void)
 
 	// g->wentry.eEntUsername.focus_id = g->wentry.eEntTitle.focus_id = g->wentry.eEntUrl.focus_id = entEditboxFocus;
 	char buf[255];
-	int n = ffs_fmt(buf, buf + sizeof(buf),
+	int n = ffs_format_r0(buf, sizeof(buf),
 		"fpassman v%s\n\n"
 		"Fast password manager"
 		, FPM_VER);
@@ -979,10 +981,9 @@ done:
 	return r;
 }
 
-int WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nShowCmd)
+int __stdcall WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nShowCmd)
 {
 	int r = 1;
-	ffmem_init();
 
 	if (NULL == (g = ffmem_new(gui)))
 		return -1;

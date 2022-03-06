@@ -3,14 +3,13 @@ Copyright (c) 2018 Simon Zolin
 */
 
 #include <fpassman.h>
-#include <FF/data/conf.h>
-#include <FF/data/psarg.h>
-#include <FF/data/utf8.h>
-#include <FF/path.h>
+#include <util/cmdarg-scheme.h>
 #include <FFOS/file.h>
 #include <FFOS/process.h>
 #include <FFOS/error.h>
+#include <FFOS/ffos-extern.h>
 
+#define CMD_ELAST 100
 
 struct pm {
 	fpm_db *db;
@@ -25,7 +24,7 @@ static const struct fpm_core *core;
 static int pm_cmdline(int argc, const char **argv);
 static void pm_free(void);
 
-static int pm_help(ffparser_schem *p, void *obj);
+static int pm_help(ffcmdarg_scheme *p, void *obj);
 
 
 static void pm_free(void)
@@ -36,93 +35,62 @@ static void pm_free(void)
 	ffmem_free(pm);
 }
 
-static const ffpars_arg pm_cmd_args[] = {
-	{ "db",	FFPARS_SETVAL('d') | FFPARS_TCHARPTR | FFPARS_FCOPY | FFPARS_FSTRZ,  FFPARS_DSTOFF(struct pm, dbfn) },
-	{ "filter",	FFPARS_SETVAL('f') | FFPARS_TSTR | FFPARS_FCOPY,  FFPARS_DSTOFF(struct pm, filter) },
-	{ "help",	FFPARS_SETVAL('h') | FFPARS_TBOOL | FFPARS_FALONE,  FFPARS_DST(&pm_help) },
+static const ffcmdarg_arg pm_cmd_args[] = {
+	{ 'd', "db",	FFCMDARG_TSTRZ,  FF_OFF(struct pm, dbfn) },
+	{ 'f', "filter",	FFCMDARG_TSTR,  FF_OFF(struct pm, filter) },
+	{ 'h', "help",	FFCMDARG_TSWITCH,  (ffsize)pm_help },
+	{}
 };
 
 
 /** Show help info. */
-static int pm_help(ffparser_schem *p, void *obj)
+static int pm_help(ffcmdarg_scheme *p, void *obj)
 {
 	char buf[4096];
 	ssize_t n;
-	char *fn;
-	fffd f;
+	char *fn = NULL;
+	fffd f = FFFILE_NULL;
 
 	if (NULL == (fn = core->getpath(FFSTR("help.txt"))))
-		return FFPARS_ESYS;
+		goto done;
 
-	f = fffile_open(fn, FFFILE_READONLY | FFFILE_NOATIME);
-	ffmem_free(fn);
-	if (f == FF_BADFD)
-		return FFPARS_ELAST;
+	f = fffile_open(fn, FFFILE_READONLY);
+	if (f == FFFILE_NULL)
+		goto done;
+
 	n = fffile_read(f, buf, sizeof(buf));
-	fffile_close(f);
 	if (n > 0)
-		fffile_write(ffstdout, buf, n);
-	return FFPARS_ELAST;
+		ffstdout_write(buf, n);
+
+done:
+	fffile_close(f);
+	ffmem_free(fn);
+	return CMD_ELAST;
 }
 
 /** Parse command line arguments. */
 static int pm_cmdline(int argc, const char **argv)
 {
-	ffparser_schem ps;
-	ffpsarg_parser p;
-	ffpars_ctx ctx = {};
 	int r = 0, ret = 1;
-	ffpsarg pa;
-	const char *arg;
+	ffstr errmsg = {};
 
-	ffpsarg_init(&pa, argv, argc);
-
-	ffpars_setargs(&ctx, pm, pm_cmd_args, FFCNT(pm_cmd_args));
-	if (0 != ffpsarg_scheminit(&ps, &p, &ctx)) {
-		errlog("cmd line parser", NULL);
-		return 1;
-	}
-
-	ffpsarg_parseinit(&p);
-
-	ffpsarg_next(&pa); //skip argv[0]
-
-	arg = ffpsarg_next(&pa);
-	if (arg == NULL) {
+	if (argc == 1) {
 		pm_help(NULL, NULL);
 		goto fail;
 	}
 
-	while (arg != NULL) {
-		int n = 0;
-		r = ffpsarg_parse(&p, arg, &n);
-		if (n != 0)
-			arg = ffpsarg_next(&pa);
-
-		r = ffpsarg_schemrun(&ps);
-
-		if (r == FFPARS_ELAST)
-			goto fail;
-
-		if (ffpars_iserr(r))
-			break;
-	}
-
-	if (!ffpars_iserr(r))
-		r = ffpsarg_schemfin(&ps);
-
-	if (ffpars_iserr(r)) {
-		errlog("cmd line parser: %s"
-			, (r == FFPARS_ESYS) ? fferr_strp(fferr_last()) : ffpars_errstr(r));
+	r = ffcmdarg_parse_object(pm_cmd_args, pm, argv, argc, 0, &errmsg);
+	if (r == -CMD_ELAST)
+		goto fail;
+	if (r < 0) {
+		errlog("cmd line parser: %S", &errmsg);
 		goto fail;
 	}
 
 	ret = 0;
 
 fail:
-	ffpsarg_destroy(&pa);
-	ffpars_schemfree(&ps);
-	ffpsarg_parseclose(&p);
+	ffstr_free(&errmsg);
 	return ret;
 }
 
@@ -136,12 +104,29 @@ enum {
 	COL_DEFWIDTH = 10,
 };
 
+/** Get characters N */
+int ffutf8_len(const char *d, ffsize n)
+{
+	int r = ffutf8_to_utf16(NULL, 0, d, n, FFUNICODE_UTF16LE);
+	if (r < 0)
+		return 0;
+	return r / 2;
+}
+
+/** Set the maximum value.
+The same as: dst = max(dst, src) */
+#define ffint_setmax(dst, src) \
+do { \
+	if ((dst) < (src)) \
+		(dst) = (src); \
+} while (0)
+
 static void ent_print(const char *filter, size_t len)
 {
 	fpm_dbentry *e, **it;
-	fpm_dbentry emax = {0};
-	ffstr3 buf = {0};
-	ffarr list = {0};
+	fpm_dbentry emax = {};
+	ffvec buf = {};
+	ffvec list = {};
 	void **p;
 
 	emax.title.len = emax.username.len = emax.passwd.len = emax.url.len = COL_DEFWIDTH;
@@ -155,21 +140,21 @@ static void ent_print(const char *filter, size_t len)
 		ffint_setmax(emax.passwd.len, ffutf8_len(e->passwd.ptr, e->passwd.len));
 		ffint_setmax(emax.url.len, ffutf8_len(e->url.ptr, e->url.len));
 
-		p = ffarr_push(&list, void*);
+		p = ffvec_pushT(&list, void*);
 		*p = e;
 	}
 
-	ffstr_catfmt(&buf, COL_TITLE "%*c" COL_USERNAME "%*c" COL_PASSWORD "%*c" COL_URL "%*c" COL_NOTES "\n"
+	ffvec_addfmt(&buf, COL_TITLE "%*c" COL_USERNAME "%*c" COL_PASSWORD "%*c" COL_URL "%*c" COL_NOTES "\n"
 		"%*c\n"
-		, emax.title.len - FFSLEN(COL_TITLE) + 1, ' '
-		, emax.username.len - FFSLEN(COL_USERNAME) + 1, ' '
-		, emax.passwd.len - FFSLEN(COL_PASSWORD) + 1, ' '
-		, emax.url.len - FFSLEN(COL_URL) + 1, ' '
+		, emax.title.len - FFS_LEN(COL_TITLE) + 1, ' '
+		, emax.username.len - FFS_LEN(COL_USERNAME) + 1, ' '
+		, emax.passwd.len - FFS_LEN(COL_PASSWORD) + 1, ' '
+		, emax.url.len - FFS_LEN(COL_URL) + 1, ' '
 		, emax.title.len + emax.username.len + emax.passwd.len + emax.url.len, '=');
 
-	FFARR_WALKT(&list, it, fpm_dbentry*) {
+	FFSLICE_WALK(&list, it) {
 		e = *it;
-		ffstr_catfmt(&buf, "%S%*c%S%*c%S%*c%S%*c%S\n"
+		ffvec_addfmt(&buf, "%S%*c%S%*c%S%*c%S%*c%S\n"
 			, &e->title, emax.title.len - ffutf8_len(e->title.ptr, e->title.len) + 1, ' '
 			, &e->username, emax.username.len - ffutf8_len(e->username.ptr, e->username.len) + 1, ' '
 			, &e->passwd, emax.passwd.len - ffutf8_len(e->passwd.ptr, e->passwd.len) + 1, ' '
@@ -177,19 +162,9 @@ static void ent_print(const char *filter, size_t len)
 			, &e->notes);
 	}
 
-	fffile_write(ffstdout, buf.ptr, buf.len);
-	ffarr_free(&buf);
-	ffarr_free(&list);
-}
-
-/** Find end-of-line marker (LF or CRLF).
-Return byte offset or 'len' if not found. */
-static inline ffsize ffs_findeol(const char *s, ffsize len)
-{
-	const char *p = ffs_find(s, len, '\n');
-	if (p != s && p[-1] == '\r')
-		p--;
-	return p - s;
+	ffstdout_write(buf.ptr, buf.len);
+	ffvec_free(&buf);
+	ffvec_free(&list);
 }
 
 static int tui_run()
@@ -209,17 +184,21 @@ static int tui_run()
 	}
 
 	if (1) {
-		fffile_writecz(ffstdout, "Database password:");
+		ffstdout_fmt("Database password:");
 
 		ffstd_attr(ffstdin, FFSTD_ECHO, 0);
 		r = fffile_read(ffstdin, pwd, sizeof(pwd));
 		ffstd_attr(ffstdin, FFSTD_ECHO, FFSTD_ECHO);
-		fffile_writecz(ffstdout, "\n");
-		r = ffs_findeol(pwd, r);
+		ffstdout_fmt("\n");
+
+		ffstr t = FFSTR_INITN(pwd, r);
+		ffstr_splitby(&t, '\n', &t, NULL);
+		ffstr_rskipchar1(&t, '\r');
+		r = t.len;
 	}
 
 	dbfif->keyinit(key, pwd, r);
-	ffmem_tzero(pwd);
+	ffmem_zero_obj(pwd);
 
 	if (0 != dbfif->open(pm->db, dbfn, key)) {
 		errlog("Database open failed", NULL);
@@ -239,7 +218,6 @@ int main(int argc, char **argv)
 {
 	int r = 1;
 
-	ffmem_init();
 	if (NULL == (pm = ffmem_new(struct pm)))
 		return 1;
 

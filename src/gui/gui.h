@@ -4,7 +4,7 @@ Copyright (c) 2018 Simon Zolin
 
 #include <fpassman.h>
 
-#include <FF/gui/winapi.h>
+#include <util/gui-winapi/winapi.h>
 
 
 typedef struct wmain {

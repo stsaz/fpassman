@@ -164,13 +164,11 @@ window wentry {
 	editbox eEntTitle {
 		position 10 10 150 20
 		style visible
-		// label Title
 	}
 
 	editbox eEntUsername {
 		position 10 40 130 20
 		style visible
-		// label Username
 	}
 
 	button bEntCopyUsername {
@@ -184,7 +182,6 @@ window wentry {
 	editbox eEntPassword {
 		position 10 70 130 20
 		style visible
-		// label Password
 	}
 
 	button bEntCopyPasswd {
@@ -198,7 +195,6 @@ window wentry {
 	editbox eEntUrl {
 		position 10 100 150 20
 		style visible
-		// label URL
 	}
 
 	editbox eEntTag {
@@ -209,7 +205,6 @@ window wentry {
 	text eEntNotes {
 		position 170 40 150 110
 		style visible
-		// label Notes
 	}
 
 	button bEntOk {
@@ -238,7 +233,6 @@ window wdb {
 	editbox edbfn {
 		position 10 10 150 20
 		style visible
-		// label Filename
 	}
 
 	button bbrowse {
@@ -251,13 +245,11 @@ window wdb {
 	editbox edbpass {
 		position 10 35 100 20
 		style visible password
-		// label Password
 	}
 
 	editbox edbpass2 {
 		position 10 60 100 20
 		style password
-		// label "Retype Password"
 	}
 
 	button bdbdo {
