@@ -49,7 +49,7 @@ static int dbf_open(fpm_db *db, const char *fn, const byte *key)
 	ffjson js = {};
 	ffjson_scheme ps = {};
 	int e = 0, flush = 0, r = JSON_EBADVAL;
-	ffstr data, fbuf = {}, decrypted = {}, plain = {}, zin;
+	ffstr data, fbuf = {}, decrypted = {}, plain = {}, zin = {};
 	fffd f = FFFILE_NULL;
 	size_t n;
 	z_ctx *lz = NULL;

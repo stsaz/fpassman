@@ -12,8 +12,8 @@ typedef ffuint uint;
 // CORE
 
 #define FPM_VER_MAJOR  1
-#define FPM_VER_MINOR  0
-#define FPM_VER  "1.0"
+#define FPM_VER_MINOR  1
+#define FPM_VER  "1.1"
 #define FPM_HOMEPAGE  "https://github.com/stsaz/fpassman"
 
 struct fpm_conf {

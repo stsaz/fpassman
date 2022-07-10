@@ -15,12 +15,12 @@ CRYPTOLIB3 := $(PROJDIR)/cryptolib3/_$(OS)-amd64
 # OS-specific options
 ifeq "$(OS)" "windows"
 BIN := fpassman.exe
-INSTDIR := fpassman
+INST_DIR := fpassman
 CFLAGS += -DFF_WIN_APIVER=0x0501
 
 else
 BIN := fpassman
-INSTDIR := fpassman-1
+INST_DIR := fpassman-1
 endif
 
 CFLAGS += -O2 -g -fno-strict-aliasing -fvisibility=hidden \
@@ -91,23 +91,24 @@ $(BIN): $(BIN_O)
 clean:
 	rm -f $(BIN) $(OSBINS) *.debug $(OBJ) $(OBJ_DIR)/fpassman.coff
 
-strip: $(BINS:.$(SO)=.$(SO).debug) $(BIN).debug $(BINS:.exe=.exe.debug) $(OSBINS:.exe=.exe.debug)
+strip:
+	strip $(BIN) $(OSBINS)
 
 install:
-	mkdir -vp $(INSTDIR)
+	mkdir -vp $(INST_DIR)
 	$(CP) \
 		$(FFPACK)/zlib/libz-ff.$(SO) \
 		$(BIN) \
 		$(PROJDIR)/fpassman.conf $(PROJDIR)/help.txt \
-		$(INSTDIR)/
-	$(CP) $(PROJDIR)/README.md $(INSTDIR)/README.txt
+		$(INST_DIR)/
+	$(CP) $(PROJDIR)/README.md $(INST_DIR)/README.txt
 
 ifeq "$(OS)" "windows"
 	$(CP) \
 		fpassman-gui.exe \
 		$(PROJDIR)/src/gui/fpassman.gui \
-		$(INSTDIR)/
-	unix2dos $(INSTDIR)/*.txt $(INSTDIR)/*.conf $(INSTDIR)/*.gui
+		$(INST_DIR)/
+	unix2dos $(INST_DIR)/*.txt $(INST_DIR)/*.conf $(INST_DIR)/*.gui
 endif
 
 build-install: build
@@ -117,10 +118,18 @@ strip-install: build
 	$(MAKE) -f $(firstword $(MAKEFILE_LIST)) strip
 	$(MAKE) -f $(firstword $(MAKEFILE_LIST)) install
 
+# package
+PKG_VER := 0.1
+PKG_ARCH := amd64
+PKG_PACKER := tar -c --owner=0 --group=0 --numeric-owner -v --zstd -f
+PKG_EXT := tar.zst
+ifeq "$(OS)" "windows"
+	PKG_ARCH := x64
+	PKG_PACKER := zip -r -v
+	PKG_EXT := zip
+endif
 package:
-	rm -f $(PROJ)-$(VER)-$(OS)-amd64.$(PACK_EXT) \
-		&&  $(PACK) $(PROJ)-$(VER)-$(OS)-amd64.$(PACK_EXT) $(INSTDIR)
-	$(PACK) $(PROJ)-$(VER)-$(OS)-amd64-debug.$(PACK_EXT) ./*.debug
+	$(PKG_PACKER) fpassman-$(PKG_VER)-$(OS)-$(PKG_ARCH).$(PKG_EXT) $(INST_DIR)
 
 install-package: strip-install
 	$(MAKE) -f $(firstword $(MAKEFILE_LIST)) package
