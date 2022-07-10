@@ -479,7 +479,7 @@ static void wdb_close(void)
 	dbif->fin(g->dbx);
 	if (NULL == (g->dbx = dbif->create()))
 		return;
-	ffmem_safefree0(g->saved_fn);
+	ffmem_free(g->saved_fn);  g->saved_fn = NULL;
 	ffmem_zero(g->saved_key, sizeof(g->saved_key));
 	g->saved_key_valid = 0;
 
@@ -1009,6 +1009,6 @@ done:
 		dbif->fin(g->dbx);
 	if (core != NULL)
 		core_free();
-	ffmem_free0(g);
+	ffmem_free(g);  g = NULL;
 	return r;
 }
