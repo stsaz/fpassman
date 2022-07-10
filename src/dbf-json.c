@@ -53,7 +53,7 @@ static int dbf_open(fpm_db *db, const char *fn, const byte *key)
 	fffd f = FFFILE_NULL;
 	size_t n;
 	z_ctx *lz = NULL;
-	aes_ctx de;
+	aes_ctx de = {};
 	byte iv[16];
 	byte *dst;
 	set_iv(iv, key);

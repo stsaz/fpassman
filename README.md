@@ -27,3 +27,9 @@ Features:
 2. Execute `fpassman -d YOUR_DB -f YOUR_FILTER`.
 3. Enter password.
 4. A list of matched entries will be shown.
+
+### Add entry via console
+
+1. Start cmd.exe
+2. Execute `fpassman -d YOUR_DB -a NAME USER PASS URL NOTES`.
+3. Enter password.
