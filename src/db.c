@@ -16,6 +16,7 @@ typedef struct dbentry {
 } dbentry;
 
 struct fpm_db {
+	uint ent_id_next;
 	ffvec grps; //fpm_dbgroup[]
 	fflist ents; //dbentry[]
 };
@@ -49,6 +50,19 @@ static fpm_db* db_create(void)
 	return db;
 }
 
+void ent_set(fpm_dbentry *dst, const fpm_dbentry *src)
+{
+	fftime t;
+	fftime_now(&t);
+	dst->mtime = t.sec;
+
+	ffstr_dupstr(&dst->title, &src->title);
+	ffstr_dupstr(&dst->username, &src->username);
+	ffstr_dupstr(&dst->passwd, &src->passwd);
+	ffstr_dupstr(&dst->url, &src->url);
+	ffstr_dupstr(&dst->notes, &src->notes);
+}
+
 static fpm_dbentry* db_ent(uint cmd, fpm_db *db, fpm_dbentry *ent)
 {
 	dbentry *e;
@@ -56,6 +70,7 @@ static fpm_dbentry* db_ent(uint cmd, fpm_db *db, fpm_dbentry *ent)
 	case FPM_DB_INS:
 		if (NULL == (e = ffmem_new(dbentry)))
 			return NULL;
+		ent->id = db->ent_id_next++;
 		e->e = *ent;
 		fflist_add(&db->ents, &e->sib);
 		return &e->e;
@@ -71,6 +86,17 @@ static fpm_dbentry* db_ent(uint cmd, fpm_db *db, fpm_dbentry *ent)
 		fftime_now(&t);
 		ent->mtime = t.sec;
 		break;
+	}
+
+	case FPM_DB_SETBYID: {
+		fpm_dbentry *e;
+		for (e = db_ent(FPM_DB_NEXT, db, NULL);  e != NULL;  e = db_ent(FPM_DB_NEXT, db, e)) {
+			if (e->id == ent->id) {
+				ent_set(e, ent);
+				return e;
+			}
+		}
+		return NULL;
 	}
 
 	case FPM_DB_NEXT: {

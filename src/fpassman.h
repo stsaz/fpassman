@@ -12,8 +12,8 @@ typedef ffuint uint;
 // CORE
 
 #define FPM_VER_MAJOR  1
-#define FPM_VER_MINOR  1
-#define FPM_VER  "1.1"
+#define FPM_VER_MINOR  2
+#define FPM_VER  "1.2"
 #define FPM_HOMEPAGE  "https://github.com/stsaz/fpassman"
 
 struct fpm_conf {
@@ -42,6 +42,7 @@ typedef struct fpm_dbgroup {
 } fpm_dbgroup;
 
 typedef struct fpm_dbentry {
+	uint id;
 	ffstr title;
 	ffstr username;
 	ffstr passwd;
@@ -69,8 +70,9 @@ struct fpm_dbf_iface {
 enum FPM_DB_CMD {
 	FPM_DB_INS = 1,
 	FPM_DB_RM,
-	FPM_DB_MOD,
+	FPM_DB_MOD, //obsolete
 	FPM_DB_NEXT,
+	FPM_DB_SETBYID,
 };
 
 struct fpm_dbiface {

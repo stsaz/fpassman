@@ -1,5 +1,5 @@
 Usage:
-    fpassman [OPTIONS] [-a NAME USER PASS URL NOTES]
+    fpassman [OPTIONS] [-a NAME USER PASS URL NOTES] [-e ID NAME USER PASS URL NOTES]
 
 Options:
 -d, --db=DBFILE   Set database file
@@ -7,5 +7,7 @@ Options:
 
 -a, --add NAME USER PASS URL NOTES
                     Add new entry
+-e, --edit ID NAME USER PASS URL NOTES
+                    Edit existing entry
 
 -h, --help   Print help info and exit

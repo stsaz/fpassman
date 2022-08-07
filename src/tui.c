@@ -15,10 +15,11 @@ struct pm {
 	fpm_db *db;
 
 	char *dbfn;
-	ffstr add_data[5];
+	ffstr add_data[6]; // [ID] NAME USER PASS URL NOTES
 	uint add_data_n;
 	ffstr filter;
 	ffbyte add_entry_mode;
+	ffbyte edit_entry_mode;
 };
 
 static struct pm *pm;
@@ -47,7 +48,7 @@ static void pm_free(void)
 
 static int pm_arg(ffcmdarg_scheme *p, void *obj, ffstr *s)
 {
-	if (!pm->add_entry_mode)
+	if (!(pm->add_entry_mode || pm->edit_entry_mode))
 		return -FFCMDARG_ERROR;
 	if (pm->add_data_n == FF_COUNT(pm->add_data))
 		return -FFCMDARG_ERROR;
@@ -58,9 +59,10 @@ static int pm_arg(ffcmdarg_scheme *p, void *obj, ffstr *s)
 
 static const ffcmdarg_arg pm_cmd_args[] = {
 	{ 0, "",	FFCMDARG_TSTR,  (ffsize)pm_arg },
-	{ 'd', "db",    FFCMDARG_TSTRZ,  FF_OFF(struct pm, dbfn) },
+	{ 'd', "db",	FFCMDARG_TSTRZ,  FF_OFF(struct pm, dbfn) },
 	{ 'f', "filter",	FFCMDARG_TSTR,  FF_OFF(struct pm, filter) },
-	{ 'a', "add",    FFCMDARG_TSWITCH,  FF_OFF(struct pm, add_entry_mode) },
+	{ 'a', "add",	FFCMDARG_TSWITCH,  FF_OFF(struct pm, add_entry_mode) },
+	{ 'e', "edit",	FFCMDARG_TSWITCH,  FF_OFF(struct pm, edit_entry_mode) },
 	{ 'h', "help",	FFCMDARG_TSWITCH,  (ffsize)pm_help },
 	{}
 };
@@ -146,14 +148,18 @@ do { \
 
 void ent_log(const fpm_dbentry *ent)
 {
-	fflog("%S %S %S %S %S"
+	fflog("%u %S %S %S %S %S"
+		, ent->id
 		, &ent->title, &ent->username, &ent->passwd, &ent->url, &ent->notes);
 }
 
-void ent_add(ffstr *ss, uint n)
+int ent_add_edit(ffstr *ss, uint n, uint to_add)
 {
-	if (n == 0)
-		return;
+	if ((to_add && n < 1)
+		|| (!to_add && n < 2)) {
+		errlog("not enough arguments");
+		return -1;
+	}
 
 	fpm_dbentry ent = {};
 	ent.grp = -1;
@@ -161,6 +167,16 @@ void ent_add(ffstr *ss, uint n)
 	fftime t;
 	fftime_now(&t);
 	ent.mtime = t.sec;
+
+	if (!to_add) {
+		uint u;
+		if (!ffstr_to_uint32(&ss[0], &u)) {
+			errlog("bad ID");
+			return -1;
+		}
+		ent.id = u;
+		ss++;
+	}
 
 	if (n > 0)
 		ffstr_dupstr(&ent.title, &ss[0]);
@@ -172,8 +188,15 @@ void ent_add(ffstr *ss, uint n)
 		ffstr_dupstr(&ent.url, &ss[3]);
 	if (n > 4)
 		ffstr_dupstr(&ent.notes, &ss[4]);
-	fpm_dbentry *it = dbif->ent(FPM_DB_INS, pm->db, &ent);
+
+	uint m = FPM_DB_INS;
+	if (!to_add) {
+		m = FPM_DB_SETBYID;
+	}
+
+	fpm_dbentry *it = dbif->ent(m, pm->db, &ent);
 	ent_log(it);
+	return 0;
 }
 
 static void ent_print(const char *filter, size_t len)
@@ -199,7 +222,7 @@ static void ent_print(const char *filter, size_t len)
 		*p = e;
 	}
 
-	ffvec_addfmt(&buf, COL_TITLE "%*c" COL_USERNAME "%*c" COL_PASSWORD "%*c" COL_URL "%*c" COL_NOTES "\n"
+	ffvec_addfmt(&buf, "ID      " COL_TITLE "%*c" COL_USERNAME "%*c" COL_PASSWORD "%*c" COL_URL "%*c" COL_NOTES "\n"
 		"%*c\n"
 		, emax.title.len - FFS_LEN(COL_TITLE) + 1, ' '
 		, emax.username.len - FFS_LEN(COL_USERNAME) + 1, ' '
@@ -209,7 +232,8 @@ static void ent_print(const char *filter, size_t len)
 
 	FFSLICE_WALK(&list, it) {
 		e = *it;
-		ffvec_addfmt(&buf, "%S%*c%S%*c%S%*c%S%*c%S\n"
+		ffvec_addfmt(&buf, "%7u %S%*c%S%*c%S%*c%S%*c%S\n"
+			, e->id
 			, &e->title, emax.title.len - ffutf8_len(e->title.ptr, e->title.len) + 1, ' '
 			, &e->username, emax.username.len - ffutf8_len(e->username.ptr, e->username.len) + 1, ' '
 			, &e->passwd, emax.passwd.len - ffutf8_len(e->passwd.ptr, e->passwd.len) + 1, ' '
@@ -263,12 +287,15 @@ static int tui_run()
 		goto fail;
 	}
 
-	if (pm->add_entry_mode) {
-		ent_add(pm->add_data, pm->add_data_n);
+	if (pm->add_entry_mode || pm->edit_entry_mode) {
+		if (0 != ent_add_edit(pm->add_data, pm->add_data_n, pm->add_entry_mode)) {
+			goto fail;
+		}
 		if (0 != dbfif->save(pm->db, dbfn, key)) {
 			errlog("Database save failed", NULL);
 			goto fail;
 		}
+
 	} else {
 		ent_print(pm->filter.ptr, pm->filter.len);
 	}
@@ -283,6 +310,8 @@ fail:
 int main(int argc, char **argv)
 {
 	int r = 1;
+
+	fflog("fpassman v" FPM_VER);
 
 	if (NULL == (pm = ffmem_new(struct pm)))
 		return 1;
