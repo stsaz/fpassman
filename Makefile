@@ -8,7 +8,7 @@ FFBASE := $(ROOT)/ffbase
 FFOS := $(ROOT)/ffos
 FFPACK := $(ROOT)/ffpack
 
-include $(FFOS)/test/makeconf2
+include $(FFBASE)/test/makeconf
 
 CRYPTOLIB3 := $(PROJDIR)/cryptolib3/_$(OS)-amd64
 
@@ -23,10 +23,14 @@ BIN := fpassman
 INST_DIR := fpassman-1
 endif
 
-CFLAGS += -O2 -g -fno-strict-aliasing -fvisibility=hidden \
+CFLAGS += -g -fno-strict-aliasing -fvisibility=hidden \
 	-Wall -Werror \
 	-I$(SRCDIR) -I$(FFOS) -I$(FFBASE) -I$(FFPACK) -I$(CRYPTOLIB3)/..
-
+ifeq "$(DEBUG)" "1"
+	CFLAGS += -O0 -DFF_DEBUG
+else
+	CFLAGS += -O2
+endif
 LINKFLAGS += \
 	-fvisibility=hidden -L$(FFPACK)/zlib
 
