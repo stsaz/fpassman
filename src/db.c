@@ -99,6 +99,19 @@ static fpm_dbentry* db_ent(uint cmd, fpm_db *db, fpm_dbentry *ent)
 		return NULL;
 	}
 
+	case FPM_DB_RMBYID: {
+		fpm_dbentry *e;
+		for (e = db_ent(FPM_DB_NEXT, db, NULL);  e != NULL;  e = db_ent(FPM_DB_NEXT, db, e)) {
+			if (e->id == ent->id) {
+				dbentry *dbe = FF_STRUCTPTR(dbentry, e, e);
+				fflist_rm(&db->ents, &dbe->sib);
+				dbentry_free(dbe);
+				break;
+			}
+		}
+		break;
+	}
+
 	case FPM_DB_NEXT: {
 		dbentry *prev = FF_STRUCTPTR(dbentry, e, ent);
 		ffchain_item *it;

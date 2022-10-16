@@ -81,6 +81,7 @@ enum FPM_DB_CMD {
 	FPM_DB_MOD, //obsolete
 	FPM_DB_NEXT,
 	FPM_DB_SETBYID,
+	FPM_DB_RMBYID,
 };
 
 struct fpm_dbiface {

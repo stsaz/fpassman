@@ -9,6 +9,7 @@ Options:
                     Add new entry
 -e, --edit ID NAME USER PASS URL NOTES
                     Edit existing entry
+-r, --remove ID     Remove existing row by its ID
 
     --compat-v1.1   Read old v1.1 DB file
 

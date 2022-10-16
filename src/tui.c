@@ -20,6 +20,7 @@ struct pm {
 	ffstr filter;
 	ffbyte add_entry_mode;
 	ffbyte edit_entry_mode;
+	byte del_entry_mode;
 	byte compat_v11;
 };
 
@@ -49,7 +50,7 @@ static void pm_free(void)
 
 static int pm_arg(ffcmdarg_scheme *p, void *obj, ffstr *s)
 {
-	if (!(pm->add_entry_mode || pm->edit_entry_mode))
+	if (!(pm->add_entry_mode || pm->edit_entry_mode || pm->del_entry_mode))
 		return -FFCMDARG_ERROR;
 	if (pm->add_data_n == FF_COUNT(pm->add_data))
 		return -FFCMDARG_ERROR;
@@ -64,6 +65,7 @@ static const ffcmdarg_arg pm_cmd_args[] = {
 	{ 'f', "filter",	FFCMDARG_TSTR,  FF_OFF(struct pm, filter) },
 	{ 'a', "add",	FFCMDARG_TSWITCH,  FF_OFF(struct pm, add_entry_mode) },
 	{ 'e', "edit",	FFCMDARG_TSWITCH,  FF_OFF(struct pm, edit_entry_mode) },
+	{ 'r', "remove",	FFCMDARG_TSWITCH,  FF_OFF(struct pm, del_entry_mode) },
 	{ 0, "compat-v1.1",	FFCMDARG_TSWITCH,  FF_OFF(struct pm, compat_v11) },
 	{ 'h', "help",	FFCMDARG_TSWITCH,  (ffsize)pm_help },
 	{}
@@ -201,6 +203,26 @@ int ent_add_edit(ffstr *ss, uint n, uint to_add)
 	return 0;
 }
 
+static int ent_del(ffstr *ss, uint n)
+{
+	if (n != 1) {
+		errlog("expecting ID of the row to delete");
+		return -1;
+	}
+
+	fpm_dbentry ent = {};
+
+	uint u;
+	if (!ffstr_to_uint32(&ss[0], &u)) {
+		errlog("bad ID");
+		return -1;
+	}
+	ent.id = u;
+
+	dbif->ent(FPM_DB_RMBYID, pm->db, &ent);
+	return 0;
+}
+
 static void ent_print(const char *filter, size_t len)
 {
 	fpm_dbentry *e, **it;
@@ -293,10 +315,17 @@ static int tui_run()
 		goto fail;
 	}
 
-	if (pm->add_entry_mode || pm->edit_entry_mode) {
-		if (0 != ent_add_edit(pm->add_data, pm->add_data_n, pm->add_entry_mode)) {
-			goto fail;
+	if (pm->add_entry_mode || pm->edit_entry_mode || pm->del_entry_mode) {
+
+		if (pm->add_entry_mode || pm->edit_entry_mode) {
+			if (0 != ent_add_edit(pm->add_data, pm->add_data_n, pm->add_entry_mode)) {
+				goto fail;
+			}
+		} else if (pm->del_entry_mode) {
+			if (0 != ent_del(pm->add_data, pm->add_data_n))
+				goto fail;
 		}
+
 		if (0 != dbfif->save(pm->db, dbfn, key)) {
 			errlog("Database save failed", NULL);
 			goto fail;
