@@ -13,23 +13,21 @@ include $(FFBASE)/test/makeconf
 CRYPTOLIB3 := $(PROJDIR)/cryptolib3/_$(OS)-amd64
 
 # OS-specific options
-ifeq "$(OS)" "windows"
-BIN := fpassman.exe
-INST_DIR := fpassman
-CFLAGS += -DFF_WIN_APIVER=0x0501
-
-else
 BIN := fpassman
 INST_DIR := fpassman-1
+ifeq "$(OS)" "windows"
+	BIN := fpassman.exe
+	INST_DIR := fpassman
+	CFLAGS += -DFF_WIN_APIVER=0x0501
 endif
 
-CFLAGS += -g -fno-strict-aliasing -fvisibility=hidden \
-	-Wall -Werror \
+CFLAGS += -fno-strict-aliasing -fvisibility=hidden \
+	-Wall \
 	-I$(SRCDIR) -I$(FFOS) -I$(FFBASE) -I$(FFPACK) -I$(CRYPTOLIB3)/..
 ifeq "$(DEBUG)" "1"
-	CFLAGS += -O0 -DFF_DEBUG
+	CFLAGS += -O0 -g -DFF_DEBUG -Werror
 else
-	CFLAGS += -O2
+	CFLAGS += -O3
 endif
 LINKFLAGS += \
 	-fvisibility=hidden -L$(FFPACK)/zlib
@@ -37,7 +35,7 @@ LINKFLAGS += \
 
 OSBINS :=
 ifeq "$(OS)" "windows"
-OSBINS := fpassman-gui.exe
+	OSBINS := fpassman-gui.exe
 endif
 
 build: $(BIN) $(OSBINS)
@@ -76,7 +74,7 @@ BINGUI_O := $(OBJ) \
 	$(OBJ_DIR)/ffgui-winapi-loader.o \
 	$(OBJ_DIR)/ffgui-winapi.o \
 	$(OBJ_DIR)/fpassman.coff \
-	$(CRYPTOLIB3)/AES-ff.a
+	$(CRYPTOLIB3)/AES.a
 fpassman-gui.exe: $(BINGUI_O)
 	$(LINK) $(LINKFLAGS) $+ -lshell32 -luxtheme -lcomctl32 -lcomdlg32 -lgdi32 -lws2_32 -lole32 -luuid -lz-ff -mwindows -o $@
 
@@ -84,9 +82,9 @@ fpassman-gui.exe: $(BINGUI_O)
 #
 BIN_O = $(OBJ) \
 	$(OBJ_DIR)/tui.o \
-	$(CRYPTOLIB3)/AES-ff.a
+	$(CRYPTOLIB3)/AES.a
 ifeq "$(OS)" "windows"
-BIN_O += $(OBJ_DIR)/fpassman.coff
+	BIN_O += $(OBJ_DIR)/fpassman.coff
 endif
 $(BIN): $(BIN_O)
 	$(LINK) $(LINKFLAGS) $(LINK_RPATH_ORIGIN) $+ -lz-ff -o $@
@@ -104,6 +102,7 @@ install:
 		$(FFPACK)/zlib/libz-ff.$(SO) \
 		$(BIN) \
 		$(PROJDIR)/fpassman.conf $(PROJDIR)/help.txt \
+		$(PROJDIR)/CHANGES.txt \
 		$(INST_DIR)/
 	$(CP) $(PROJDIR)/README.md $(INST_DIR)/README.txt
 

@@ -6,7 +6,7 @@ VER :=
 URL := https://github.com/BrianGladman/aes/archive/refs/heads/master.zip
 PKG := $(notdir $(URL))
 DIR := aes-master
-LIB := AES-ff.a
+LIB := AES.a
 
 all: $(DIR)
 	$(MAKE) -rR $(LIB)
@@ -21,21 +21,29 @@ $(DIR): $(PKG)
 	touch $(DIR)
 
 # build
-CFLAGS := -O3 -I$(DIR) -fPIC
+CFLAGS := -O3 -DASM_AMD64_C -DINTEL_AES_POSSIBLE -I$(DIR) -fPIC
 
-SRC := \
-	$(DIR)/aescrypt.c \
-	$(DIR)/aeskey2.c \
-	$(DIR)/aeskey.c \
-	$(DIR)/aes_modes.c \
-	$(DIR)/aes_ni.c \
-	$(DIR)/aestab.c
-OBJ := aes-ff.o $(SRC:.c=.o)
+YASM := yasm
+YASM_FLAGS := -f elf64
+ifeq "$(OS)" "windows"
+	YASM_FLAGS := -f win64
+endif
+YASM_FLAGS += -m amd64 -DASM_AMD64_C -DINTEL_AES_POSSIBLE
+
+OBJ := aes-ff.o \
+	$(DIR)/aes_amd64.o \
+	$(DIR)/aeskey.o \
+	$(DIR)/aes_modes.o \
+	$(DIR)/aes_ni.o \
+	$(DIR)/aestab.o
 
 %.o: %.c
 	$(C) $(CFLAGS) $< -o $@
+%.o: %.asm
+	$(YASM) $(YASM_FLAGS) $< -o $@
 
 $(LIB): $(OBJ)
+	rm $@
 	$(AR) rcs $@ $(OBJ)
 
 clean:

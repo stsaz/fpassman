@@ -10,4 +10,6 @@ Options:
 -e, --edit ID NAME USER PASS URL NOTES
                     Edit existing entry
 
+    --compat-v1.1   Read old v1.1 DB file
+
 -h, --help   Print help info and exit

@@ -20,6 +20,7 @@ struct pm {
 	ffstr filter;
 	ffbyte add_entry_mode;
 	ffbyte edit_entry_mode;
+	byte compat_v11;
 };
 
 static struct pm *pm;
@@ -63,6 +64,7 @@ static const ffcmdarg_arg pm_cmd_args[] = {
 	{ 'f', "filter",	FFCMDARG_TSTR,  FF_OFF(struct pm, filter) },
 	{ 'a', "add",	FFCMDARG_TSWITCH,  FF_OFF(struct pm, add_entry_mode) },
 	{ 'e', "edit",	FFCMDARG_TSWITCH,  FF_OFF(struct pm, edit_entry_mode) },
+	{ 0, "compat-v1.1",	FFCMDARG_TSWITCH,  FF_OFF(struct pm, compat_v11) },
 	{ 'h', "help",	FFCMDARG_TSWITCH,  (ffsize)pm_help },
 	{}
 };
@@ -282,7 +284,11 @@ static int tui_run()
 	dbfif->keyinit(key, pwd, r);
 	ffmem_zero_obj(pwd);
 
-	if (0 != dbfif->open(pm->db, dbfn, key)) {
+	uint flags = 0;
+	if (pm->compat_v11)
+		flags |= FPM_OPEN_COMPAT_V11;
+
+	if (0 != dbfif->open2(pm->db, dbfn, key, flags)) {
 		errlog("Database open failed", NULL);
 		goto fail;
 	}

@@ -5,7 +5,7 @@
 #include <zlib/zlib-ff.h>
 
 enum {
-	ZBUFSIZE = 4*1024,
+	ZBUFSIZE = 16*1024,
 };
 
 static int compress(const ffstr *data, ffstr *compressed)

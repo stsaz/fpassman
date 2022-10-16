@@ -33,3 +33,9 @@ Features:
 1. Start cmd.exe
 2. Execute `fpassman -d YOUR_DB -a NAME USER PASS URL NOTES`.
 3. Enter password.
+
+### Edit entry via console
+
+1. Start cmd.exe
+2. Execute `fpassman -d YOUR_DB -e ID NAME USER PASS URL NOTES` where ID is the unique ID of the row you want to edit.
+3. Enter password.

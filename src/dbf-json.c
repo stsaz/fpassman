@@ -34,7 +34,7 @@ static void dbf_keyinit(byte *key, const char *passwd, size_t len)
 	sha256_hash(passwd, len, key);
 }
 
-static int dbf_open(fpm_db *db, const char *fn, const byte *key)
+static int dbf_open2(fpm_db *db, const char *fn, const byte *key, uint flags)
 {
 	dbparse dbp = {};
 	dbp.db = db;
@@ -56,7 +56,7 @@ static int dbf_open(fpm_db *db, const char *fn, const byte *key)
 		goto done;
 	}
 
-	if (0 != decrypt_init(&cr, key))
+	if (0 != decrypt_init(flags, &cr, key))
 		goto done;
 	if (0 != compress_open(&z))
 		goto done;
@@ -150,6 +150,11 @@ done:
 	return r;
 }
 
+static int dbf_open(fpm_db *db, const char *fn, const byte *key)
+{
+	return dbf_open2(db, fn, key, 0);
+}
+
 static int file_save(const char *fn, ffstr *dst)
 {
 	int e = 1;
@@ -203,6 +208,6 @@ done:
 }
 
 static const struct fpm_dbf_iface _dbf = {
-	dbf_keyinit, dbf_open, dbf_save,
+	dbf_keyinit, dbf_open, dbf_open2, dbf_save,
 };
 const struct fpm_dbf_iface *dbfif = &_dbf;

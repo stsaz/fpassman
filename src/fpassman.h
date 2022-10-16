@@ -55,6 +55,10 @@ typedef struct fpm_dbentry {
 
 #define	FPM_DB_KEYLEN 32
 
+enum FPM_OPEN {
+	FPM_OPEN_COMPAT_V11 = 1,
+};
+
 typedef struct fpm_db fpm_db;
 struct fpm_dbf_iface {
 	/** Get key from password string. */
@@ -62,6 +66,10 @@ struct fpm_dbf_iface {
 
 	/** Open database file. */
 	int (*open)(fpm_db *db, const char *fn, const byte *key);
+
+	/** Open database file.
+	flags: enum FPM_OPEN */
+	int (*open2)(fpm_db *db, const char *fn, const byte *key, uint flags);
 
 	/** Save database to file. */
 	int (*save)(fpm_db *db, const char *fn, const byte *key);
