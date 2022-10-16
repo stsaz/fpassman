@@ -75,6 +75,14 @@ static fpm_dbentry* db_ent(uint cmd, fpm_db *db, fpm_dbentry *ent)
 		fflist_add(&db->ents, &e->sib);
 		return &e->e;
 
+	case FPM_DB_ADD:
+		if (NULL == (e = ffmem_new(dbentry)))
+			return NULL;
+		ent_set(&e->e, ent);
+		e->e.id = db->ent_id_next++;
+		fflist_add(&db->ents, &e->sib);
+		return &e->e;
+
 	case FPM_DB_RM:
 		e = FF_STRUCTPTR(dbentry, e, ent);
 		fflist_rm(&db->ents, &e->sib);
@@ -127,8 +135,19 @@ static fpm_dbentry* db_ent(uint cmd, fpm_db *db, fpm_dbentry *ent)
 	return NULL;
 }
 
+void priv_clear(ffstr s)
+{
+	ffmem_fill(s.ptr, 0xff, s.len);
+}
+
 static void dbentry_free(dbentry *e)
 {
+	priv_clear(e->e.title);
+	priv_clear(e->e.username);
+	priv_clear(e->e.passwd);
+	priv_clear(e->e.url);
+	priv_clear(e->e.notes);
+
 	ffstr_free(&e->e.title);
 	ffstr_free(&e->e.username);
 	ffstr_free(&e->e.passwd);
@@ -139,6 +158,7 @@ static void dbentry_free(dbentry *e)
 
 static void dbgrp_fin(fpm_dbgroup *g)
 {
+	priv_clear(g->name);
 	ffstr_free(&g->name);
 }
 

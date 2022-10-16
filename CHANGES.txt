@@ -1,0 +1,14 @@
+# fpassman history
+
+ "+" - new feature
+ "*" - change, update or a small improvement
+ "-" - bugfix
+ "!" - broken compatibility
+
+
+fpassman v1.2 - Oct 16, 2022
+
+ *! Improve encryption algorithm: IV is now random
+    Use "--compat-v11" to read/convert old DB files.
+ * Improve in-memory data privacy
+ + "--remove ID": Remove existing row by its ID

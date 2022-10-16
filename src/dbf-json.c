@@ -41,7 +41,7 @@ static int dbf_open2(fpm_db *db, const char *fn, const byte *key, uint flags)
 	ffjson js = {};
 	ffjson_scheme ps = {};
 	int e = 0, flush = 0, r = JSON_EBADVAL;
-	ffstr data, fbuf = {}, zin = {};
+	ffstr data = {}, fbuf = {}, zin = {};
 	fffd f = FFFILE_NULL;
 	size_t n;
 	struct dbf_crypt cr = {};
@@ -58,7 +58,7 @@ static int dbf_open2(fpm_db *db, const char *fn, const byte *key, uint flags)
 
 	if (0 != decrypt_init(flags, &cr, key))
 		goto done;
-	if (0 != compress_open(&z))
+	if (0 != decompress_open(&z))
 		goto done;
 
 	if (NULL == ffstr_alloc(&fbuf, BUFSIZE))
@@ -92,7 +92,7 @@ static int dbf_open2(fpm_db *db, const char *fn, const byte *key, uint flags)
 	case R_DECOMPRESS: {
 		if (e == Z_DONE)
 			goto ok;
-		e = compress_do(&z, &zin, &data, flush);
+		e = decompress_do(&z, &zin, &data, flush);
 		if (e > 0)
 		{}
 		else
@@ -129,7 +129,7 @@ static int dbf_open2(fpm_db *db, const char *fn, const byte *key, uint flags)
 	}
 
 ok:
-	ffmem_zero(js.buf.ptr, js.buf.len);
+	priv_clear(*(ffstr*)&js.buf);
 	r = ffjson_fin(&js);
 	if (r < 0) {
 		errlog("json parse: %s", ffjson_errstr(r));
@@ -139,11 +139,11 @@ ok:
 	r = 0;
 
 done:
-	ffmem_zero(js.buf.ptr, js.buf.len);
+	priv_clear(*(ffstr*)&js.buf);
 	ffjson_fin(&js);
 
 	decrypt_close(&cr);
-	compress_close(&z);
+	decompress_close(&z);
 	ffstr_free(&fbuf);
 	ffjson_scheme_destroy(&ps);
 	fffile_close(f);
@@ -194,14 +194,15 @@ static int dbf_save(fpm_db *db, const char *fn, const byte *key)
 		e = JSON_EBADVAL;
 		goto done;
 	}
-	ffstr_free(&compressed);
 
 	if (0 != file_save(fn, &encrypted))
 		goto done;
 	e = 0;
 
 done:
+	priv_clear(json);
 	ffstr_free(&json);
+	priv_clear(compressed);
 	ffstr_free(&compressed);
 	ffstr_free(&encrypted);
 	return e;

@@ -18,8 +18,8 @@ struct pm {
 	ffstr add_data[6]; // [ID] NAME USER PASS URL NOTES
 	uint add_data_n;
 	ffstr filter;
-	ffbyte add_entry_mode;
-	ffbyte edit_entry_mode;
+	byte add_entry_mode;
+	byte edit_entry_mode;
 	byte del_entry_mode;
 	byte compat_v11;
 };
@@ -42,6 +42,7 @@ static void pm_free(void)
 		dbif->fin(pm->db);
 	ffstr *it;
 	FFARRAY_FOREACH(pm->add_data, it) {
+		priv_clear(*it);
 		ffstr_free(it);
 	}
 	ffmem_free(pm->dbfn);
@@ -183,17 +184,17 @@ int ent_add_edit(ffstr *ss, uint n, uint to_add)
 	}
 
 	if (n > 0)
-		ffstr_dupstr(&ent.title, &ss[0]);
+		ent.title = ss[0];
 	if (n > 1)
-		ffstr_dupstr(&ent.username, &ss[1]);
+		ent.username = ss[1];
 	if (n > 2)
-		ffstr_dupstr(&ent.passwd, &ss[2]);
+		ent.passwd = ss[2];
 	if (n > 3)
-		ffstr_dupstr(&ent.url, &ss[3]);
+		ent.url = ss[3];
 	if (n > 4)
-		ffstr_dupstr(&ent.notes, &ss[4]);
+		ent.notes = ss[4];
 
-	uint m = FPM_DB_INS;
+	uint m = FPM_DB_ADD;
 	if (!to_add) {
 		m = FPM_DB_SETBYID;
 	}
@@ -304,7 +305,8 @@ static int tui_run()
 	char pwd[128];
 	r = pwd_get(pwd, sizeof(pwd));
 	dbfif->keyinit(key, pwd, r);
-	ffmem_zero_obj(pwd);
+	ffstr s = FFSTR_INITN(pwd, sizeof(pwd));
+	priv_clear(s);
 
 	uint flags = 0;
 	if (pm->compat_v11)

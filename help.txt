@@ -1,16 +1,18 @@
 Usage:
-    fpassman [OPTIONS] [-a NAME USER PASS URL NOTES] [-e ID NAME USER PASS URL NOTES]
+
+    fpassman [OPTIONS] [-a NAME USER PASS URL NOTES] [-e ID NAME USER PASS URL NOTES] [-r ID]
 
 Options:
--d, --db=DBFILE   Set database file
--f, --filter=STR  Set filter
 
--a, --add NAME USER PASS URL NOTES
+ -d, --db=DBFILE    Set database file
+ -f, --filter=STR   Set filter
+
+ -a, --add NAME USER PASS URL NOTES
                     Add new entry
--e, --edit ID NAME USER PASS URL NOTES
+ -e, --edit ID NAME USER PASS URL NOTES
                     Edit existing entry
--r, --remove ID     Remove existing row by its ID
+ -r, --remove ID    Remove existing row by its ID
 
-    --compat-v1.1   Read old v1.1 DB file
+     --compat-v1.1  Read old v1.1 DB file
 
--h, --help   Print help info and exit
+ -h, --help         Print help info and exit

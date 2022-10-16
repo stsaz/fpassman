@@ -480,7 +480,8 @@ static void wdb_close(void)
 	if (NULL == (g->dbx = dbif->create()))
 		return;
 	ffmem_free(g->saved_fn);  g->saved_fn = NULL;
-	ffmem_zero(g->saved_key, sizeof(g->saved_key));
+	ffstr s = FFSTR_INITN(g->saved_key, sizeof(g->saved_key));
+	priv_clear(s);
 	g->saved_key_valid = 0;
 
 	ent_clear();
@@ -502,7 +503,7 @@ static void wdb_load(void)
 	ffui_textstr(&g->wdb.edbpass, &qpass);
 	ffui_cleartext(&g->wdb.edbpass);
 	dbfif->keyinit(key, qpass.ptr, qpass.len);
-	ffmem_zero(qpass.ptr, qpass.len);
+	priv_clear(qpass);
 	ffstr_free(&qpass);
 
 	wmain_status("Loading database...");
@@ -593,9 +594,9 @@ static void wdb_save(void)
 	ffui_cleartext(&g->wdb.edbpass);
 	ffui_cleartext(&g->wdb.edbpass2);
 	dbfif->keyinit(key, pass.ptr, pass.len);
-	ffmem_zero(pass.ptr, pass.len);
+	priv_clear(pass);
 	ffstr_free(&pass);
-	ffmem_zero(pass2.ptr, pass2.len);
+	priv_clear(pass2);
 	ffstr_free(&pass2);
 
 	ffui_textstr(&g->wdb.edbfn, &fn);

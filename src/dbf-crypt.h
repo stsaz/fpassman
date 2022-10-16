@@ -112,7 +112,8 @@ static int decrypt_init(uint flags, struct dbf_crypt *x, const byte *key)
 
 static void decrypt_close(struct dbf_crypt *x)
 {
-	ffmem_zero(x->decrypted.ptr, x->decrypted.len);
+	ffstr s = FFSTR_INITN(x->decrypted.ptr, AESBUFSIZE);
+	priv_clear(s);
 	ffstr_free(&x->decrypted);
 	aes_decrypt_destroy(&x->de);
 }
@@ -138,7 +139,8 @@ static int decrypt(struct dbf_crypt *x, ffstr in, ffstr *buf)
 		}
 		ffstr_shift(&in, len2);
 		dst += len2;
+		x->decrypted.len += len2;
 	}
-	ffstr_set(buf, x->decrypted.ptr, dst - (byte*)x->decrypted.ptr);
+	ffstr_set2(buf, &x->decrypted);
 	return 0;
 }

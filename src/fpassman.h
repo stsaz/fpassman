@@ -82,6 +82,7 @@ enum FPM_DB_CMD {
 	FPM_DB_NEXT,
 	FPM_DB_SETBYID,
 	FPM_DB_RMBYID,
+	FPM_DB_ADD,
 };
 
 struct fpm_dbiface {
@@ -108,3 +109,5 @@ struct fpm_dbiface {
 
 extern const struct fpm_dbiface *dbif;
 extern const struct fpm_dbf_iface *dbfif;
+
+void priv_clear(ffstr s);
