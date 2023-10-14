@@ -1,36 +1,38 @@
 
-PROJ := fpassman
 ROOT := ..
-PROJDIR := $(ROOT)/fpassman
-SRCDIR := $(PROJDIR)/src
-OBJ_DIR := .
+FPASSMAN := $(ROOT)/fpassman
 FFBASE := $(ROOT)/ffbase
 FFOS := $(ROOT)/ffos
 FFPACK := $(ROOT)/ffpack
 
 include $(FFBASE)/test/makeconf
 
-CRYPTOLIB3 := $(PROJDIR)/cryptolib3/_$(OS)-amd64
+SUBMAKE := $(MAKE) -f $(firstword $(MAKEFILE_LIST))
+
+FFPACK_BIN := $(FFPACK)/_$(OS)-$(CPU)
+CRYPTOLIB3 := $(FPASSMAN)/cryptolib3
+CRYPTOLIB3_BIN := $(FPASSMAN)/cryptolib3/_$(OS)-amd64
 
 # OS-specific options
 BIN := fpassman
 INST_DIR := fpassman-1
 ifeq "$(OS)" "windows"
 	BIN := fpassman.exe
-	INST_DIR := fpassman
 	CFLAGS += -DFF_WIN_APIVER=0x0501
 endif
 
 CFLAGS += -fno-strict-aliasing -fvisibility=hidden \
-	-Wall \
-	-I$(SRCDIR) -I$(FFOS) -I$(FFBASE) -I$(FFPACK) -I$(CRYPTOLIB3)/..
+	-Wall -Wno-multichar \
+	-MMD -MP \
+	-I$(FPASSMAN)/src -I$(FFOS) -I$(FFBASE) -I$(FFPACK) -I$(CRYPTOLIB3)
 ifeq "$(DEBUG)" "1"
 	CFLAGS += -O0 -g -DFF_DEBUG -Werror
 else
 	CFLAGS += -O3
 endif
+CXXFLAGS := $(CFLAGS) -fno-exceptions -fno-rtti -Wno-c++11-narrowing -Wno-sign-compare
 LINKFLAGS += \
-	-fvisibility=hidden -L$(FFPACK)/zlib
+	-fvisibility=hidden -L$(FFPACK_BIN)
 
 
 OSBINS :=
@@ -40,58 +42,54 @@ endif
 
 build: $(BIN) $(OSBINS)
 
-HDRS := $(PROJDIR)/Makefile \
-	$(wildcard $(SRCDIR)/*.h) \
-	$(wildcard $(SRCDIR)/util/*.h) \
-	$(wildcard $(FFBASE)/*.h) \
-	$(wildcard $(FFOS)/*.h)
+-include $(wildcard *.d)
 
 OBJ := \
-	$(OBJ_DIR)/db.o $(OBJ_DIR)/dbf-json.o \
-	$(OBJ_DIR)/core.o \
-	$(OBJ_DIR)/sha256.o $(OBJ_DIR)/sha256-ff.o $(OBJ_DIR)/sha1.o
+	db.o dbf-json.o \
+	core.o \
+	sha256.o sha256-ff.o sha1.o
 
-$(OBJ_DIR)/%.o: $(SRCDIR)/%.c $(HDRS)
+%.o: $(FPASSMAN)/src/%.c
 	$(C) $(CFLAGS) $< -o $@
 
-$(OBJ_DIR)/%.o: $(CRYPTOLIB3)/../sha/%.c
+%.o: $(CRYPTOLIB3)/sha/%.c
 	$(C) $(CFLAGS) $< -o $@
-$(OBJ_DIR)/%.o: $(CRYPTOLIB3)/../sha1/%.c
+%.o: $(CRYPTOLIB3)/sha1/%.c
 	$(C) $(CFLAGS) $< -o $@
 
 
 #
-$(OBJ_DIR)/%.o: $(SRCDIR)/gui/%.c $(HDRS)
-	$(C) $(CFLAGS) $< -o $@
-$(OBJ_DIR)/%.o: $(SRCDIR)/util/gui-winapi/%.c $(HDRS)
+%.o: $(FPASSMAN)/src/gui/%.cpp
+	$(CXX) $(CXXFLAGS) $< -o $@
+%.o: $(FPASSMAN)/src/util/gui-winapi/%.c
 	$(C) $(CFLAGS) $< -o $@
 
-$(OBJ_DIR)/fpassman.coff: $(PROJDIR)/fpassman.rc $(PROJDIR)/fpassman.ico
-	$(WINDRES) -I$(SRCDIR) -I$(FFOS) -I$(FFBASE) $(PROJDIR)/fpassman.rc $@
+fpassman.coff: $(FPASSMAN)/fpassman.rc $(FPASSMAN)/fpassman.ico
+	$(WINDRES) -I$(FPASSMAN)/src -I$(FFOS) -I$(FFBASE) $(FPASSMAN)/fpassman.rc $@
 
 BINGUI_O := $(OBJ) \
-	$(OBJ_DIR)/gui.o \
-	$(OBJ_DIR)/ffgui-winapi-loader.o \
-	$(OBJ_DIR)/ffgui-winapi.o \
-	$(OBJ_DIR)/fpassman.coff \
-	$(CRYPTOLIB3)/AES.a
+	gui.o \
+	ffgui-winapi-loader.o \
+	ffgui-winapi.o \
+	fpassman.coff \
+	$(CRYPTOLIB3_BIN)/AES.a
 fpassman-gui.exe: $(BINGUI_O)
-	$(LINK) $(LINKFLAGS) $+ -lshell32 -luxtheme -lcomctl32 -lcomdlg32 -lgdi32 -lws2_32 -lole32 -luuid -lz-ff -mwindows -o $@
+	$(LINKXX) $+ $(LINKFLAGS) -lshell32 -luxtheme -lcomctl32 -lcomdlg32 -lgdi32 -lws2_32 -lole32 -luuid -lz-ffpack -mwindows -o $@
 
 
 #
 BIN_O = $(OBJ) \
-	$(OBJ_DIR)/tui.o \
-	$(CRYPTOLIB3)/AES.a
+	tui.o \
+	$(CRYPTOLIB3_BIN)/AES.a
 ifeq "$(OS)" "windows"
-	BIN_O += $(OBJ_DIR)/fpassman.coff
+	BIN_O += fpassman.coff
 endif
 $(BIN): $(BIN_O)
-	$(LINK) $(LINKFLAGS) $(LINK_RPATH_ORIGIN) $+ -lz-ff -o $@
+	$(LINK) $+ $(LINKFLAGS) $(LINK_RPATH_ORIGIN) -lz-ffpack -o $@
 
 
 clean:
-	rm -f $(BIN) $(OSBINS) *.debug $(OBJ) $(OBJ_DIR)/fpassman.coff
+	rm -f $(BIN) $(OSBINS) *.debug $(OBJ) fpassman.coff
 
 strip:
 	strip $(BIN) $(OSBINS)
@@ -99,27 +97,26 @@ strip:
 install:
 	mkdir -vp $(INST_DIR)
 	$(CP) \
-		$(FFPACK)/zlib/libz-ff.$(SO) \
+		$(FFPACK_BIN)/libz-ffpack.$(SO) \
 		$(BIN) \
-		$(PROJDIR)/fpassman.conf $(PROJDIR)/help.txt \
-		$(PROJDIR)/CHANGES.txt \
+		$(FPASSMAN)/fpassman.conf $(FPASSMAN)/help.txt \
 		$(INST_DIR)/
-	$(CP) $(PROJDIR)/README.md $(INST_DIR)/README.txt
+	$(CP) $(FPASSMAN)/README.md $(INST_DIR)/README.txt
 
 ifeq "$(OS)" "windows"
 	$(CP) \
 		fpassman-gui.exe \
-		$(PROJDIR)/src/gui/fpassman.gui \
+		$(FPASSMAN)/src/gui/fpassman.gui \
 		$(INST_DIR)/
 	unix2dos $(INST_DIR)/*.txt $(INST_DIR)/*.conf $(INST_DIR)/*.gui
 endif
 
 build-install: build
-	$(MAKE) -f $(firstword $(MAKEFILE_LIST)) install
+	$(SUBMAKE) install
 
 strip-install: build
-	$(MAKE) -f $(firstword $(MAKEFILE_LIST)) strip
-	$(MAKE) -f $(firstword $(MAKEFILE_LIST)) install
+	$(SUBMAKE) strip
+	$(SUBMAKE) install
 
 # package
 PKG_VER := 0.1
@@ -135,4 +132,4 @@ package:
 	$(PKG_PACKER) fpassman-$(PKG_VER)-$(OS)-$(PKG_ARCH).$(PKG_EXT) $(INST_DIR)
 
 install-package: strip-install
-	$(MAKE) -f $(firstword $(MAKEFILE_LIST)) package
+	$(SUBMAKE) package

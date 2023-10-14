@@ -3,7 +3,7 @@ Copyright (c) 2018 Simon Zolin
 */
 
 #include <fpassman.h>
-#include <util/conf2-scheme.h>
+#include <util/conf-scheme.h>
 #include <FFOS/process.h>
 #include <FFOS/path.h>
 
@@ -13,7 +13,7 @@ void core_free();
 
 // CORE
 static int core_setroot(const char *argv0);
-static char* core_getpath(const char *name, size_t len);
+static char* core_getpath(ffstr name);
 static struct fpm_conf* core_conf();
 static int core_loadconf(void);
 static const struct fpm_core core_iface = {
@@ -40,9 +40,9 @@ static int core_loadconf(void)
 	char *fn = NULL;
 	ffstr errmsg = {};
 
-	if (NULL == (fn = core_getpath(FFSTR("fpassman.conf"))))
+	if (NULL == (fn = core_getpath(FFSTR_Z("fpassman.conf"))))
 		goto done;
-	r = ffconf_parse_file(conf_args, &pm->conf, fn, 0, &errmsg);
+	r = ffconf_parse_file(conf_args, &pm->conf, fn, 0, &errmsg, 4*1024);
 	if (r < 0) {
 		ffstderr_fmt("fpassman.conf: %S\n", &errmsg);
 		goto done;
@@ -59,9 +59,9 @@ done:
 	return r;
 }
 
-static char* core_getpath(const char *name, size_t len)
+static char* core_getpath(ffstr name)
 {
-	return ffsz_allocfmt("%S%*s", &pm->root, len, name);
+	return ffsz_allocfmt("%S%S", &pm->root, &name);
 }
 
 static int core_setroot(const char *argv0)

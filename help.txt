@@ -4,15 +4,14 @@ Usage:
 
 Options:
 
- -d, --db=DBFILE    Set database file
- -f, --filter=STR   Set filter
+ -db DBFILE         Set database file
+ -compat-v1.1       Read old v1.1 DB file
+ -filter STR        Set filter
 
- -a, --add NAME USER PASS URL NOTES
+ -add NAME USER PASS URL NOTES
                     Add new entry
- -e, --edit ID NAME USER PASS URL NOTES
+ -edit ID NAME USER PASS URL NOTES
                     Edit existing entry
- -r, --remove ID    Remove existing row by its ID
+ -remove ID         Remove existing row by its ID
 
-     --compat-v1.1  Read old v1.1 DB file
-
- -h, --help         Print help info and exit
+ -help              Print help info and exit

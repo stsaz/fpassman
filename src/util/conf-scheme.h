@@ -11,7 +11,7 @@ ffconf_parse_file
 */
 
 #pragma once
-#include "conf2.h"
+#include "conf-obj.h"
 #include <FFOS/file.h> // optional
 #include <FFOS/error.h>
 #include <ffbase/stringz.h>
@@ -136,7 +136,6 @@ struct ffconf_schemectx {
 };
 
 typedef struct ffconf_scheme {
-	ffconf *parser;
 	ffuint flags; // enum FFCONF_SCHEME_F
 	const ffconf_arg *arg;
 	ffvec ctxs; // struct ffconf_schemectx[]
@@ -144,12 +143,6 @@ typedef struct ffconf_scheme {
 	ffstr objval; // "key VALUE {"
 	const char *errmsg;
 } ffconf_scheme;
-
-static inline void ffconf_scheme_init(ffconf_scheme *cs, ffconf *parser)
-{
-	ffmem_zero_obj(cs);
-	cs->parser = parser;
-}
 
 static inline void ffconf_scheme_destroy(ffconf_scheme *cs)
 {
@@ -187,41 +180,32 @@ static inline void ffconf_scheme_addctx(ffconf_scheme *cs, const ffconf_arg *arg
 /** Skip the object context being opened */
 static inline void ffconf_scheme_skipctx(ffconf_scheme *cs)
 {
-	ffconf_scheme_addctx(cs, (void*)-1, (void*)-1);
+	ffconf_scheme_addctx(cs, (ffconf_arg*)-1, (void*)-1);
 }
 
 /** Get bits to shift by size suffix K, M, G, T */
 static ffuint _ffconf_sizesfx(int suffix)
 {
 	switch (suffix | 0x20) {
-	case 'k':
-		return 10;
-	case 'm':
-		return 20;
-	case 'g':
-		return 30;
-	case 't':
-		return 40;
+	case 'k': return 10;
+	case 'm': return 20;
+	case 'g': return 30;
+	case 't': return 40;
 	}
 	return 0;
 }
 
 #define _FFCONF_ERR(c, msg) \
-	(c)->errmsg = msg,  -FFCONF_ESCHEME
+	(c)->errmsg = msg,  FFCONF_ERROR
 
 /** Process 1 element
-r: parser's return code: enum FFCONF_R
-Return 'r';
- <0 on error: enum FFCONF_E */
-static inline int ffconf_scheme_process(ffconf_scheme *cs, int r)
+r: parser's return code: enum FFCONF_
+Return 0 on success */
+static inline int ffconf_scheme_process(ffconf_scheme *cs, int r, ffstr val)
 {
-	if (r <= 0)
-		return r;
-
 	const ffuint MAX_OFF = 64*1024;
 	int r2;
 	ffuint t = 0, flags = 0;
-	ffstr *val = &cs->parser->val;
 	struct ffconf_schemectx *ctx = ffslice_lastT(&cs->ctxs, struct ffconf_schemectx);
 	union {
 		ffstr *s;
@@ -233,21 +217,25 @@ static inline int ffconf_scheme_process(ffconf_scheme *cs, int r)
 		float *f32;
 		double *f64;
 		ffbyte *b;
+	} u;
+	u.b = NULL;
+	union {
+		void *ptr;
 		int (*func)(ffconf_scheme *cs, void *obj);
-		int (*func_str)(ffconf_scheme *cs, void *obj, ffstr *s);
+		int (*func_str)(ffconf_scheme *cs, void *obj, ffstr s);
 		int (*func_sz)(ffconf_scheme *cs, void *obj, char *sz);
 		int (*func_int)(ffconf_scheme *cs, void *obj, ffint64 i);
 		int (*func_float)(ffconf_scheme *cs, void *obj, double d);
-	} u;
-	u.b = NULL;
+	} uf;
+	uf.func = NULL;
 
 	if (ctx->args == (void*)-1 && ctx->obj == (void*)-1) {
 		// skip this object
 		switch (r) {
-		case FFCONF_ROBJ_OPEN:
+		case FFCONF_OBJ_OPEN:
 			ffconf_scheme_skipctx(cs);
 			break;
-		case FFCONF_ROBJ_CLOSE:
+		case FFCONF_OBJ_CLOSE:
 			cs->ctxs.len--;
 			break;
 		}
@@ -258,18 +246,19 @@ static inline int ffconf_scheme_process(ffconf_scheme *cs, int r)
 		t = cs->arg->flags & 0x0f;
 		flags = cs->arg->flags;
 
-		u.b = (ffbyte*)cs->arg->dst;
 		if (cs->arg->dst < MAX_OFF)
 			u.b = (ffbyte*)FF_PTR(ctx->obj, cs->arg->dst);
+		else
+			uf.ptr = (void*)cs->arg->dst;
 	}
 
 	switch (r) {
-	case FFCONF_ROBJ_OPEN: {
+	case FFCONF_OBJ_OPEN: {
 		if (t != FFCONF_TOBJ)
 			return _FFCONF_ERR(cs, "got object, expected something else");
 
 		ffsize nctx = cs->ctxs.len;
-		if (0 != (r2 = u.func(cs, ctx->obj)))
+		if (0 != (r2 = uf.func(cs, ctx->obj)))
 			return -r2; // user error
 		if (nctx + 1 != cs->ctxs.len)
 			return _FFCONF_ERR(cs, "object handler must add a new context");
@@ -278,29 +267,26 @@ static inline int ffconf_scheme_process(ffconf_scheme *cs, int r)
 		break;
 	}
 
-	case FFCONF_ROBJ_CLOSE:
-		for (ffuint i = 0;  ;  i++) {
-			if (ctx->args[i].name == NULL) {
-				cs->arg = &ctx->args[i];
-				t = cs->arg->flags & 0x0f;
-				if (t == FFCONF_TCLOSE) {
-					u.b = (ffbyte*)cs->arg->dst;
-					if (0 != (r2 = u.func(cs, ctx->obj)))
-						return -r2; // user error
-				}
-				break;
-			}
-		}
+	case FFCONF_OBJ_CLOSE: {
+		ffuint i;
+		for (i = 0;  ctx->args[i].name != NULL;  i++) {}
 
+		cs->arg = &ctx->args[i];
+		if ((cs->arg->flags & 0x0f) == FFCONF_TCLOSE) {
+			uf.ptr = (void*)cs->arg->dst;
+			if (0 != (r2 = uf.func(cs, ctx->obj)))
+				return -r2; // user error
+		}
 		cs->ctxs.len--;
 		cs->arg = NULL;
 		break;
+	}
 
-	case FFCONF_RKEY: {
+	case FFCONF_KEY: {
 		if (cs->flags & FFCONF_SCF_ICASE)
-			cs->arg = _ffconf_arg_ifind(ctx->args, val);
+			cs->arg = _ffconf_arg_ifind(ctx->args, &val);
 		else
-			cs->arg = _ffconf_arg_find(ctx->args, val);
+			cs->arg = _ffconf_arg_find(ctx->args, &val);
 		if (cs->arg == NULL)
 			return _FFCONF_ERR(cs, "no such key in the current context");
 
@@ -312,46 +298,46 @@ static inline int ffconf_scheme_process(ffconf_scheme *cs, int r)
 
 		if (cs->arg->name[0] == '*' && cs->arg->name[1] == '\0') {
 			ffstr_free(&cs->any_keyname);
-			ffstr_dupstr(&cs->any_keyname, val);
+			ffstr_dupstr(&cs->any_keyname, &val);
 		}
 		break;
 	}
 
-	case FFCONF_RVAL_NEXT:
+	case FFCONF_VAL_NEXT:
 		if (!(flags & FFCONF_FLIST))
 			return _FFCONF_ERR(cs, "the key doesn't expect multiple values");
 		// fallthrough
 
-	case FFCONF_RVAL:
+	case FFCONF_VAL:
 		switch (t) {
 		case FFCONF_TSTR:
-			if ((flags & FFCONF_FNOTEMPTY) && val->len == 0)
+			if ((flags & FFCONF_FNOTEMPTY) && val.len == 0)
 				return _FFCONF_ERR(cs, "value must not be empty");
 
 			if (cs->arg->dst < MAX_OFF) {
 				ffstr_free(u.s);
-				if (0 != ffconf_strval_acquire(cs->parser, u.s))
-					return -FFCONF_ESYS;
-			} else if (0 != (r2 = u.func_str(cs, ctx->obj, val))) {
+				if (NULL == ffstr_dupstr(u.s, &val))
+					return _FFCONF_ERR(cs, "no memory");
+			} else if (0 != (r2 = uf.func_str(cs, ctx->obj, val))) {
 				return -r2; // user error
 			}
 			break;
 
 		case FFCONF_TSTRZ: {
-			if ((flags & FFCONF_FNOTEMPTY) && val->len == 0)
+			if ((flags & FFCONF_FNOTEMPTY) && val.len == 0)
 				return _FFCONF_ERR(cs, "value must not be empty");
 
-			if (ffstr_findchar(val, '\0') >= 0)
+			if (ffstr_findchar(&val, '\0') >= 0)
 				return _FFCONF_ERR(cs, "value must not contain NULL character");
 
 			char *sz;
-			if (NULL == (sz = ffsz_dupstr(val)))
-				return -FFCONF_ESYS;
+			if (NULL == (sz = ffsz_dupstr(&val)))
+				return _FFCONF_ERR(cs, "no memory");
 			if (cs->arg->dst < MAX_OFF) {
 				ffmem_free(*u.sz);
 				*u.sz = sz;
 				sz = NULL;
-			} else if (0 != (r2 = u.func_sz(cs, ctx->obj, sz))) {
+			} else if (0 != (r2 = uf.func_sz(cs, ctx->obj, sz))) {
 				ffmem_free(sz);
 				return -r2; // user error
 			}
@@ -361,7 +347,7 @@ static inline int ffconf_scheme_process(ffconf_scheme *cs, int r)
 
 		case _FFCONF_TSIZE:
 		case _FFCONF_TINT: {
-			ffstr s = *val;
+			ffstr s = val;
 			ffuint shift = 0;
 
 			if (t == _FFCONF_TSIZE && s.len >= 2) {
@@ -398,7 +384,7 @@ static inline int ffconf_scheme_process(ffconf_scheme *cs, int r)
 					*u.i8 = i;
 				else
 					*u.i64 = i;
-			} else if (0 != (r2 = u.func_int(cs, ctx->obj, i))) {
+			} else if (0 != (r2 = uf.func_int(cs, ctx->obj, i))) {
 				return -r2; // user error
 			}
 			break;
@@ -406,7 +392,7 @@ static inline int ffconf_scheme_process(ffconf_scheme *cs, int r)
 
 		case _FFCONF_TFLOAT: {
 			double d;
-			if (!ffstr_to_float(val, &d))
+			if (!ffstr_to_float(&val, &d))
 				return _FFCONF_ERR(cs, "float expected");
 
 			if (d < 0 && !(flags & FFCONF_FSIGN))
@@ -417,18 +403,18 @@ static inline int ffconf_scheme_process(ffconf_scheme *cs, int r)
 					*u.f32 = d;
 				else
 					*u.f64 = d;
-			} else if (0 != (r2 = u.func_float(cs, ctx->obj, d)))
+			} else if (0 != (r2 = uf.func_float(cs, ctx->obj, d)))
 				return -r2; // user error
 			break;
 		}
 
 		case _FFCONF_TBOOL: {
 			int i;
-			if (ffstr_ieqz(val, "true")) {
+			if (ffstr_ieqz(&val, "true")) {
 				i = 1;
-			} else if (ffstr_ieqz(val, "false")) {
+			} else if (ffstr_ieqz(&val, "false")) {
 				i = 0;
-			} else if (ffstr_to_uint32(val, &i)
+			} else if (ffstr_to_uint32(&val, &i)
 				&& (i == 0 || i == 1)) {
 				//
 			} else {
@@ -437,30 +423,36 @@ static inline int ffconf_scheme_process(ffconf_scheme *cs, int r)
 
 			if (cs->arg->dst < MAX_OFF)
 				*u.b = !!i;
-			else if (0 != (r2 = u.func_int(cs, ctx->obj, i)))
+			else if (0 != (r2 = uf.func_int(cs, ctx->obj, i)))
 				return -r2; // user error
 			break;
 		}
 
 		case FFCONF_TOBJ:
-			if (r == FFCONF_RVAL_NEXT)
+			if (r == FFCONF_VAL_NEXT)
 				return _FFCONF_ERR(cs, "only 1 object value is supported");
 
-			if ((flags & FFCONF_FNOTEMPTY) && val->len == 0)
+			if ((flags & FFCONF_FNOTEMPTY) && val.len == 0)
 				return _FFCONF_ERR(cs, "value must not be empty");
 
 			ffstr_free(&cs->objval);
-			if (0 != ffconf_strval_acquire(cs->parser, &cs->objval))
-				return -FFCONF_ESYS;
+			if (NULL == ffstr_dupstr(&cs->objval, &val))
+				return _FFCONF_ERR(cs, "no memory");
 			break;
 
 		default:
 			return _FFCONF_ERR(cs, "value type expected in scheme");
 		}
 		break;
+
+	case FFCONF_MORE: break;
+
+	default:
+		FF_ASSERT(0);
+		return _FFCONF_ERR(cs, "incorrect usage");
 	}
 
-	return r;
+	return 0;
 }
 
 #undef _FFCONF_ERR
@@ -468,44 +460,50 @@ static inline int ffconf_scheme_process(ffconf_scheme *cs, int r)
 /** Convert data into a C object
 scheme_flags: enum FFCONF_SCHEME_F
 errmsg: (optional) error message; must free with ffstr_free()
-Return 0 on success
- <0 on error: enum FFCONF_E */
+Return 0 on success */
 static inline int ffconf_parse_object(const ffconf_arg *args, void *obj, ffstr *data, ffuint scheme_flags, ffstr *errmsg)
 {
-	int r, r2;
-	ffconf c = {};
-	ffconf_init(&c);
+	int r, r2 = 0;
+	struct ffconf_obj c = {};
 
-	ffconf_scheme cs = {};
-	cs.flags = scheme_flags;
-	cs.parser = &c;
+	ffconf_scheme cs = {
+		.flags = scheme_flags,
+	};
 	ffconf_scheme_addctx(&cs, args, obj);
 
-	for (;;) {
-		r = ffconf_parse(&c, data);
-		if (r < 0)
+	ffstr val = {};
+	while (data->len) {
+		if (FFCONF_ERROR == (r = ffconf_obj_read(&c, data, &val)))
 			goto end;
-		else if (r == 0)
-			break;
 
-		r = ffconf_scheme_process(&cs, r);
-		if (r < 0)
+		if (0 != (r2 = ffconf_scheme_process(&cs, r, val))) {
+			r = r2;
 			goto end;
+		}
 	}
+
+	ffstr_null(&val);
+	r = 0;
 
 end:
 	ffconf_scheme_destroy(&cs);
-	r2 = ffconf_fin(&c);
-	if (r == 0)
-		r = r2;
+	if (!!ffconf_obj_fin(&c) && r == 0)
+		r = FFCONF_ERROR;
 
 	if (r != 0 && errmsg != NULL) {
-		ffsize cap = 0;
-		const char *err = ffconf_errstr(r);
-		if (r == -FFCONF_ESCHEME)
+		char errbuf[100];
+		const char *err = ffconf_error(&c.lt);
+		if (r2 != 0) {
 			err = cs.errmsg;
-		ffstr_growfmt(errmsg, &cap, "%u:%u: %s"
-			, (int)c.line, (int)c.linechar
+			if (r2 != FFCONF_ERROR) {
+				ffsz_format(errbuf, sizeof(errbuf), "%d", r2);
+				err = errbuf;
+			}
+		}
+		ffsize cap = 0;
+		ffstr_growfmt(errmsg, &cap, "%u:%u: near \"%S\": %s"
+			, (int)ffconf_line(&c.lt), (int)ffconf_col(&c.lt)
+			, &val
 			, err);
 	}
 
@@ -513,16 +511,19 @@ end:
 }
 
 #ifdef _FFOS_FILE_H
-static inline int ffconf_parse_file(const ffconf_arg *args, void *obj, const char *fn, ffuint scheme_flags, ffstr *errmsg)
+
+/**
+Return 0 on success */
+static inline int ffconf_parse_file(const ffconf_arg *args, void *obj, const char *fn, ffuint scheme_flags, ffstr *errmsg, ffuint64 file_max_size)
 {
 	ffvec data = {};
-	if (0 != fffile_readwhole(fn, &data, -1)) {
+	if (0 != fffile_readwhole(fn, &data, file_max_size)) {
 		if (errmsg != NULL) {
 			ffsize cap = 0;
 			errmsg->len = 0;
 			ffstr_growfmt(errmsg, &cap, "%s: %s", fn, fferr_strptr(fferr_last()));
 		}
-		return -FFCONF_ESYS;
+		return -1;
 	}
 	ffstr d;
 	ffstr_setstr(&d, &data);
@@ -530,4 +531,5 @@ static inline int ffconf_parse_file(const ffconf_arg *args, void *obj, const cha
 	ffvec_free(&data);
 	return r;
 }
+
 #endif

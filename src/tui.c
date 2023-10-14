@@ -3,11 +3,11 @@ Copyright (c) 2018 Simon Zolin
 */
 
 #include <fpassman.h>
-#include <util/cmdarg-scheme.h>
 #include <FFOS/file.h>
 #include <FFOS/process.h>
 #include <FFOS/error.h>
 #include <FFOS/ffos-extern.h>
+#include <ffbase/args.h>
 
 #define CMD_ELAST 100
 
@@ -21,17 +21,10 @@ struct pm {
 	byte add_entry_mode;
 	byte edit_entry_mode;
 	byte del_entry_mode;
-	byte compat_v11;
 };
 
 static struct pm *pm;
 static const struct fpm_core *core;
-
-static int pm_cmdline(int argc, const char **argv);
-static void pm_free(void);
-
-static int pm_help(ffcmdarg_scheme *p, void *obj);
-
 
 #define FFARRAY_FOREACH(static_array, it) \
 	for (it = static_array;  it != static_array + FF_COUNT(static_array);  it++)
@@ -49,39 +42,26 @@ static void pm_free(void)
 	ffmem_free(pm);
 }
 
-static int pm_arg(ffcmdarg_scheme *p, void *obj, ffstr *s)
+static int pm_arg(void *obj, ffstr s)
 {
 	if (!(pm->add_entry_mode || pm->edit_entry_mode || pm->del_entry_mode))
-		return -FFCMDARG_ERROR;
+		return -FFARGS_E_ARG;
 	if (pm->add_data_n == FF_COUNT(pm->add_data))
-		return -FFCMDARG_ERROR;
-	ffstr_dupstr(&pm->add_data[pm->add_data_n], s);
+		return -FFARGS_E_ARG;
+	ffstr_dupstr(&pm->add_data[pm->add_data_n], &s);
 	pm->add_data_n++;
 	return 0;
 }
 
-static const ffcmdarg_arg pm_cmd_args[] = {
-	{ 0, "",	FFCMDARG_TSTR,  (ffsize)pm_arg },
-	{ 'd', "db",	FFCMDARG_TSTRZ,  FF_OFF(struct pm, dbfn) },
-	{ 'f', "filter",	FFCMDARG_TSTR,  FF_OFF(struct pm, filter) },
-	{ 'a', "add",	FFCMDARG_TSWITCH,  FF_OFF(struct pm, add_entry_mode) },
-	{ 'e', "edit",	FFCMDARG_TSWITCH,  FF_OFF(struct pm, edit_entry_mode) },
-	{ 'r', "remove",	FFCMDARG_TSWITCH,  FF_OFF(struct pm, del_entry_mode) },
-	{ 0, "compat-v1.1",	FFCMDARG_TSWITCH,  FF_OFF(struct pm, compat_v11) },
-	{ 'h', "help",	FFCMDARG_TSWITCH,  (ffsize)pm_help },
-	{}
-};
-
-
 /** Show help info. */
-static int pm_help(ffcmdarg_scheme *p, void *obj)
+static int pm_help()
 {
 	char buf[4096];
 	ssize_t n;
 	char *fn = NULL;
 	fffd f = FFFILE_NULL;
 
-	if (NULL == (fn = core->getpath(FFSTR("help.txt"))))
+	if (NULL == (fn = core->getpath(FFSTR_Z("help.txt"))))
 		goto done;
 
 	f = fffile_open(fn, FFFILE_READONLY);
@@ -98,29 +78,58 @@ done:
 	return CMD_ELAST;
 }
 
+#define O(m)  (void*)FF_OFF(struct pm, m)
+static const struct ffarg pm_cmd_args[] = {
+	{ "-add",		'1',	O(add_entry_mode) },
+	{ "-db",		'=s',	O(dbfn) },
+	{ "-edit",		'1',	O(edit_entry_mode) },
+	{ "-filter",	'S',	O(filter) },
+	{ "-help",		0,		pm_help },
+	{ "-remove",	'1',	O(del_entry_mode) },
+	{ "\0\1",		'S',	pm_arg },
+	{}
+};
+#undef O
+
 /** Parse command line arguments. */
-static int pm_cmdline(int argc, const char **argv)
+static int pm_cmdline(int argc, char **argv)
 {
+	char *cmd_line = NULL;
+	struct ffargs a = {};
 	int r = 0, ret = 1;
-	ffstr errmsg = {};
 
 	if (argc == 1) {
 		pm_help(NULL, NULL);
-		goto fail;
+		goto end;
 	}
 
-	r = ffcmdarg_parse_object(pm_cmd_args, pm, argv, argc, 0, &errmsg);
-	if (r == -CMD_ELAST)
-		goto fail;
-	if (r < 0) {
-		errlog("cmd line parser: %S", &errmsg);
-		goto fail;
+	uint flags = FFARGS_O_PARTIAL | FFARGS_O_DUPLICATES;
+
+#ifdef FF_WIN
+
+	cmd_line = ffsz_alloc_wtou(GetCommandLineW());
+	ffstr line = FFSTR_INITZ(cmd_line), arg;
+	_ffargs_next(&line, &arg); // skip exe name
+	char *cmd_line1 = line.ptr;
+	r = ffargs_process_line(&a, pm_cmd_args, pm, flags, cmd_line1);
+
+#else
+
+	r = ffargs_process_argv(&a, pm_cmd_args, pm, flags, argv + 1, argc - 1);
+
+#endif
+
+	if (r == CMD_ELAST)
+		goto end;
+	else if (r < 0) {
+		errlog("%s", a.error);
+		goto end;
 	}
 
 	ret = 0;
 
-fail:
-	ffstr_free(&errmsg);
+end:
+	ffmem_free(cmd_line);
 	return ret;
 }
 
@@ -309,9 +318,6 @@ static int tui_run()
 	priv_clear(s);
 
 	uint flags = 0;
-	if (pm->compat_v11)
-		flags |= FPM_OPEN_COMPAT_V11;
-
 	if (0 != dbfif->open2(pm->db, dbfn, key, flags)) {
 		errlog("Database open failed", NULL);
 		goto fail;
@@ -358,7 +364,7 @@ int main(int argc, char **argv)
 	if (0 != core->setroot(argv[0]))
 		goto done;
 
-	if (0 != pm_cmdline(argc, (const char**)argv))
+	if (0 != pm_cmdline(argc, argv))
 		goto done;
 
 	if (0 != core->loadconf())

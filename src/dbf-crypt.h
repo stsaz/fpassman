@@ -11,16 +11,6 @@ enum {
 	AESBUFSIZE = 16*1024,
 };
 
-static void set_iv_v11(byte iv[16], const byte *key)
-{
-	byte sha1sum[SHA1_LENGTH];
-	sha1_ctx sha1;
-	sha1_init(&sha1);
-	sha1_update(&sha1, key, FPM_DB_KEYLEN);
-	sha1_fin(&sha1, sha1sum);
-	memcpy(iv, sha1sum, 16);
-}
-
 static void random_iv(byte iv[16])
 {
 	fftime now;
@@ -100,10 +90,7 @@ static int decrypt_init(uint flags, struct dbf_crypt *x, const byte *key)
 		return -1;
 	}
 
-	if (flags & FPM_OPEN_COMPAT_V11)
-		set_iv_v11(x->iv, key);
-	else
-		x->need_iv = 1;
+	x->need_iv = 1;
 
 	if (NULL == ffstr_alloc(&x->decrypted, AESBUFSIZE))
 		return -1;

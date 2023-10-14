@@ -43,7 +43,7 @@ OBJ := aes-ff.o \
 	$(YASM) $(YASM_FLAGS) $< -o $@
 
 $(LIB): $(OBJ)
-	rm $@
+	rm $@ || true
 	$(AR) rcs $@ $(OBJ)
 
 clean:

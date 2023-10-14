@@ -12,9 +12,8 @@ typedef ffuint uint;
 // CORE
 
 #define FPM_VER_MAJOR  1
-#define FPM_VER_MINOR  2
-#define FPM_VER  "1.2"
-#define FPM_HOMEPAGE  "https://github.com/stsaz/fpassman"
+#define FPM_VER_MINOR  3
+#define FPM_VER  "1.3"
 
 struct fpm_conf {
 	ffstr loaddb;
@@ -23,7 +22,7 @@ struct fpm_conf {
 
 struct fpm_core {
 	int (*setroot)(const char *argv0);
-	char* (*getpath)(const char *name, size_t len);
+	char* (*getpath)(ffstr name);
 	struct fpm_conf* (*conf)();
 	int (*loadconf)(void);
 };
@@ -110,4 +109,4 @@ struct fpm_dbiface {
 extern const struct fpm_dbiface *dbif;
 extern const struct fpm_dbf_iface *dbfif;
 
-void priv_clear(ffstr s);
+FF_EXTERN void priv_clear(ffstr s);
