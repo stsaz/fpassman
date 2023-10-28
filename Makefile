@@ -5,7 +5,7 @@ FFBASE := $(ROOT)/ffbase
 FFOS := $(ROOT)/ffos
 FFPACK := $(ROOT)/ffpack
 
-include $(FFBASE)/test/makeconf
+include $(FFBASE)/conf.mk
 
 SUBMAKE := $(MAKE) -f $(firstword $(MAKEFILE_LIST))
 
