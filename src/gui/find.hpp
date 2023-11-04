@@ -12,7 +12,7 @@ const ffui_ldr_ctl wfind_ctls[] = {
 	FFUI_LDR_CTL_END
 };
 
-static void wfind_action(ffui_wnd *wnd, int id)
+static void wfind_action(ffui_window *wnd, int id)
 {
 	switch (id) {
 	case ENT_FIND:

@@ -135,7 +135,7 @@ void wentry_new()
 	ffui_wnd_setfront(&g->wentry->wnd);
 }
 
-static void wentry_action(ffui_wnd *wnd, int id)
+static void wentry_action(ffui_window *wnd, int id)
 {
 	switch (id) {
 	case ENT_CANCEL:

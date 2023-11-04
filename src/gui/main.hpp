@@ -382,7 +382,7 @@ static void area_act()
 	wmain_status("Copied to clipboard");
 }
 
-static void wmain_action(ffui_wnd *wnd, int id)
+static void wmain_action(ffui_window *wnd, int id)
 {
 	switch (id) {
 

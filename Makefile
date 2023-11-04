@@ -3,6 +3,7 @@ ROOT := ..
 FPASSMAN := $(ROOT)/fpassman
 FFBASE := $(ROOT)/ffbase
 FFSYS := $(ROOT)/ffsys
+FFGUI := $(ROOT)/ffgui
 FFPACK := $(ROOT)/ffpack
 
 include $(FFBASE)/conf.mk
@@ -58,11 +59,10 @@ OBJ := \
 	$(C) $(CFLAGS) $< -o $@
 
 
-#
 %.o: $(FPASSMAN)/src/gui/%.cpp
-	$(CXX) $(CXXFLAGS) $< -o $@
-%.o: $(FPASSMAN)/src/util/gui-winapi/%.c
-	$(C) $(CFLAGS) $< -o $@
+	$(CXX) $(CXXFLAGS) -I$(FFGUI) $< -o $@
+%.o: $(FFGUI)/ffgui/winapi/%.c
+	$(C) $(CFLAGS) -I$(FFGUI) $< -o $@
 
 fpassman.coff: $(FPASSMAN)/fpassman.rc $(FPASSMAN)/fpassman.ico
 	$(WINDRES) -I$(FPASSMAN)/src -I$(FFSYS) -I$(FFBASE) $(FPASSMAN)/fpassman.rc $@

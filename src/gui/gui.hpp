@@ -3,8 +3,9 @@ Copyright (c) 2018 Simon Zolin
 */
 
 #include <fpassman.h>
-#include <util/gui-winapi/loader.h>
-#include <util/gui.hpp>
+#include <ffgui/winapi/loader.h>
+#include <ffgui/loader.h>
+#include <ffgui/gui.hpp>
 #include <util/util.hpp>
 
 struct wmain;

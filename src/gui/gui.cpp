@@ -3,7 +3,7 @@
 
 #include <util/windows-shell.h>
 #include <gui/gui.hpp>
-#include <util/gui-winapi/loader.h>
+#include <ffgui/winapi/loader.h>
 #include <ffbase/time.h>
 #include <ffsys/file.h>
 #include <ffsys/globals.h>

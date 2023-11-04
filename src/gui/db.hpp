@@ -107,7 +107,7 @@ static void wdb_browse(void)
 	g->wdb->edbfn.text(fn);
 }
 
-static void wdb_action(ffui_wnd *wnd, int id)
+static void wdb_action(ffui_window *wnd, int id)
 {
 	switch (id) {
 	case DB_BROWSE:
