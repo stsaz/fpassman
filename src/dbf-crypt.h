@@ -2,7 +2,7 @@
 2018,2022 Simon Zolin
 */
 
-#include <FFOS/random.h>
+#include <ffsys/random.h>
 #include <aes/aes-ff.h>
 #include <sha/sha256.h>
 #include <sha1/sha1.h>

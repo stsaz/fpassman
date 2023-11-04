@@ -2,7 +2,7 @@
 ROOT := ..
 FPASSMAN := $(ROOT)/fpassman
 FFBASE := $(ROOT)/ffbase
-FFOS := $(ROOT)/ffos
+FFSYS := $(ROOT)/ffsys
 FFPACK := $(ROOT)/ffpack
 
 include $(FFBASE)/conf.mk
@@ -24,7 +24,7 @@ endif
 CFLAGS += -fno-strict-aliasing -fvisibility=hidden \
 	-Wall -Wno-multichar \
 	-MMD -MP \
-	-I$(FPASSMAN)/src -I$(FFOS) -I$(FFBASE) -I$(FFPACK) -I$(CRYPTOLIB3)
+	-I$(FPASSMAN)/src -I$(FFSYS) -I$(FFBASE) -I$(FFPACK) -I$(CRYPTOLIB3)
 ifeq "$(DEBUG)" "1"
 	CFLAGS += -O0 -g -DFF_DEBUG -Werror
 else
@@ -65,7 +65,7 @@ OBJ := \
 	$(C) $(CFLAGS) $< -o $@
 
 fpassman.coff: $(FPASSMAN)/fpassman.rc $(FPASSMAN)/fpassman.ico
-	$(WINDRES) -I$(FPASSMAN)/src -I$(FFOS) -I$(FFBASE) $(FPASSMAN)/fpassman.rc $@
+	$(WINDRES) -I$(FPASSMAN)/src -I$(FFSYS) -I$(FFBASE) $(FPASSMAN)/fpassman.rc $@
 
 BINGUI_O := $(OBJ) \
 	gui.o \

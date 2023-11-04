@@ -6,8 +6,8 @@ Copyright (c) 2018 Simon Zolin
 #include <fpassman.h>
 #include <ffbase/json-scheme.h>
 #include <ffbase/json-writer.h>
-#include <FFOS/error.h>
-#include <FFOS/file.h>
+#include <ffsys/error.h>
+#include <ffsys/file.h>
 
 #define JSON_EBADVAL 100
 

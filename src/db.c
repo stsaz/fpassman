@@ -5,8 +5,8 @@ Copyright (c) 2018 Simon Zolin
 #include <fpassman.h>
 #include <ffbase/vector.h>
 #include <ffbase/list.h>
-#include <FFOS/time.h>
-#include <FFOS/error.h>
+#include <ffsys/time.h>
+#include <ffsys/error.h>
 
 
 typedef struct dbentry {

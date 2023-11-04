@@ -5,8 +5,8 @@
 #include <gui/gui.hpp>
 #include <util/gui-winapi/loader.h>
 #include <ffbase/time.h>
-#include <FFOS/file.h>
-#include <FFOS/ffos-extern.h>
+#include <ffsys/file.h>
+#include <ffsys/globals.h>
 
 const struct fpm_core *core;
 gui *g;

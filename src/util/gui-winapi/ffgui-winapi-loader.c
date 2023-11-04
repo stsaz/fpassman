@@ -2,8 +2,8 @@
 2014, Simon Zolin */
 
 #include "loader.h"
-#include <FFOS/path.h>
-#include <FFOS/file.h>
+#include <ffsys/path.h>
+#include <ffsys/file.h>
 
 
 static void* ldr_getctl(ffui_loader *g, const ffstr *name);

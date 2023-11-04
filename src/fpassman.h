@@ -3,8 +3,8 @@ Copyright (c) 2018 Simon Zolin
 */
 
 #pragma once
-#include <FFOS/string.h>
-#include <FFOS/std.h>
+#include <ffsys/string.h>
+#include <ffsys/std.h>
 typedef ffbyte byte;
 typedef ffuint uint;
 

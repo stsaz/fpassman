@@ -12,10 +12,10 @@
 #include "tree.h"
 #include "view.h"
 #include "window.h"
-#include <FFOS/file.h>
-#include <FFOS/process.h>
-#include <FFOS/dir.h>
-#include <FFOS/thread.h>
+#include <ffsys/file.h>
+#include <ffsys/process.h>
+#include <ffsys/dir.h>
+#include <ffsys/thread.h>
 
 
 static uint _curthd_id; //ID of the thread running GUI message loop

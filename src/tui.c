@@ -3,10 +3,10 @@ Copyright (c) 2018 Simon Zolin
 */
 
 #include <fpassman.h>
-#include <FFOS/file.h>
-#include <FFOS/process.h>
-#include <FFOS/error.h>
-#include <FFOS/ffos-extern.h>
+#include <ffsys/file.h>
+#include <ffsys/process.h>
+#include <ffsys/error.h>
+#include <ffsys/globals.h>
 #include <ffbase/args.h>
 
 #define CMD_ELAST 100

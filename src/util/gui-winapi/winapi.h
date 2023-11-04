@@ -4,14 +4,14 @@
 #pragma once
 #define UNICODE
 #define _UNICODE
-#include <FFOS/error.h>
-#include <FFOS/path.h>
+#include <ffsys/error.h>
+#include <ffsys/path.h>
 #include <ffbase/vector.h>
 #include <commctrl.h>
 #include <uxtheme.h>
 
 #ifdef FFGUI_DEBUG
-	#include <FFOS/std.h>
+	#include <ffsys/std.h>
 	#define _ffui_log fflog
 #else
 	#define _ffui_log(...)

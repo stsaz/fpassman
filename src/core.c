@@ -4,8 +4,8 @@ Copyright (c) 2018 Simon Zolin
 
 #include <fpassman.h>
 #include <util/conf-scheme.h>
-#include <FFOS/process.h>
-#include <FFOS/path.h>
+#include <ffsys/process.h>
+#include <ffsys/path.h>
 
 
 const struct fpm_core* core_init();
