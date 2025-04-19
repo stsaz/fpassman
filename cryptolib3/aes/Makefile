@@ -4,7 +4,7 @@ include ../makeconf
 
 VER :=
 URL := https://github.com/BrianGladman/aes/archive/refs/heads/master.zip
-PKG := $(notdir $(URL))
+PKG := $(CRLIB3)/aes/$(notdir $(URL))
 DIR := aes-master
 LIB := AES.a
 
@@ -37,9 +37,9 @@ OBJ := aes-ff.o \
 	$(DIR)/aes_ni.o \
 	$(DIR)/aestab.o
 
-%.o: %.c
+%.o: $(CRLIB3)/aes/%.c
 	$(C) $(CFLAGS) $< -o $@
-%.o: %.asm
+%.o: $(CRLIB3)/aes/%.asm
 	$(YASM) $(YASM_FLAGS) $< -o $@
 
 $(LIB): $(OBJ)

@@ -1,9 +1,13 @@
 /**
-Copyright (c) 2018 Simon Zolin
+2018 Simon Zolin
 */
 
 #include <fpassman.h>
-#include <ffgui/winapi/loader.h>
+#ifdef FF_WIN
+	#include <ffgui/winapi/loader.h>
+#else
+	#include <ffgui/gtk/loader.h>
+#endif
 #include <ffgui/loader.h>
 #include <ffgui/gui.hpp>
 #include <util/util.hpp>
@@ -11,7 +15,7 @@ Copyright (c) 2018 Simon Zolin
 struct wmain;
 void wmain_show();
 void wmain_init();
-void wmain_filter(ffstr search);
+void wmain_filter(int grp_id, ffstr search);
 void wmain_status(const char *s);
 void wmain_grp_add(ffstr name);
 
@@ -27,7 +31,7 @@ void wentry_fill(const fpm_dbentry *ent);
 void wentry_new();
 void wentry_clear();
 void wentry_update();
-int wentry_set(fpm_dbentry *ent);
+void wentry_set(fpm_dbentry *ent);
 void wentry_show(uint show);
 
 struct wfind;
@@ -47,13 +51,11 @@ extern const ffui_ldr_ctl
 	wabout_ctls[];
 
 typedef struct gui {
-	ffui_dialog dlg;
+	ffui_dialogxx dlg;
 
 	ffui_menu mfile, mgroup, mentry, mhelp;
-	ffui_menu mtray;
 
 	struct wmain *wmain;
-
 	fpm_dbentry *active_ent;
 	int active_item;
 
@@ -61,12 +63,14 @@ typedef struct gui {
 	uint entry_creating :1;
 
 	struct wfind *wfind;
+	xxvec cur_filter;
 
 	struct wdb *wdb;
 	uint db_op;
 	char *saved_fn;
 	byte saved_key[32];
 	uint saved_key_valid :1;
+	xxvec items; // fpm_dbentry*[]
 
 	struct wabout *wabout;
 

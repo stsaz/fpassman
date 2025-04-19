@@ -1,5 +1,5 @@
 /** Core module.
-Copyright (c) 2018 Simon Zolin
+2018 Simon Zolin
 */
 
 #include <fpassman.h>
@@ -10,16 +10,6 @@ Copyright (c) 2018 Simon Zolin
 
 const struct fpm_core* core_init();
 void core_free();
-
-// CORE
-static int core_setroot(const char *argv0);
-static char* core_getpath(ffstr name);
-static struct fpm_conf* core_conf();
-static int core_loadconf(void);
-static const struct fpm_core core_iface = {
-	&core_setroot, &core_getpath, &core_conf, &core_loadconf
-};
-
 
 struct corectx {
 	struct fpm_conf conf;
@@ -33,6 +23,11 @@ static const ffconf_arg conf_args[] = {
 	{}
 };
 
+
+static char* core_getpath(ffstr name)
+{
+	return ffsz_allocfmt("%S%S", &pm->root, &name);
+}
 
 static int core_loadconf(void)
 {
@@ -59,11 +54,6 @@ done:
 	return r;
 }
 
-static char* core_getpath(ffstr name)
-{
-	return ffsz_allocfmt("%S%S", &pm->root, &name);
-}
-
 static int core_setroot(const char *argv0)
 {
 	char fn[4096];
@@ -83,6 +73,10 @@ static struct fpm_conf* core_conf()
 {
 	return &pm->conf;
 }
+
+static const struct fpm_core core_iface = {
+	core_setroot, core_getpath, core_conf, core_loadconf
+};
 
 const struct fpm_core* core_init()
 {

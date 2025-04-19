@@ -1,9 +1,9 @@
-#include <fpassman.h>
+#include <windows.h>
 
-1 RT_MANIFEST "./src/gui/exe.manifest"
+1 RT_MANIFEST "exe.manifest"
 
 1 VERSIONINFO
-	FILEVERSION FPM_VER_MAJOR,FPM_VER_MINOR,0,0
+	FILEVERSION 1,0,0,0
 BEGIN
 	BLOCK "StringFileInfo"
 	BEGIN

@@ -16,7 +16,7 @@ static void wfind_action(ffui_window *wnd, int id)
 {
 	switch (id) {
 	case ENT_FIND:
-		wmain_filter(ffvecxx(g->wfind->efind.text()).str());  break;
+		wmain_filter(~0U, g->cur_filter.acquire(g->wfind->efind.text()).str());  break;
 	}
 }
 

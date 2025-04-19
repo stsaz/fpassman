@@ -21,9 +21,10 @@ const ffui_ldr_ctl wabout_ctls[] = {
 static void wabout_action(ffui_window *wnd, int id)
 {
 	switch (id) {
-	case OPEN_HOMEPAGE:
-		if (0 != ffui_shellexec(FPM_HOMEPAGE, SW_SHOWNORMAL))
-			errlog("ffui_shellexec()", 0);
+	case ABOUT_OPEN_HOMEPAGE:
+#ifdef FF_WIN
+		ffui_shellexec(FPM_HOMEPAGE, SW_SHOWNORMAL);
+#endif
 		break;
 	}
 }
@@ -31,12 +32,19 @@ static void wabout_action(ffui_window *wnd, int id)
 void wabout_show(int show)
 {
 	if (show) {
-		ffstrxx_buf<1000> s;
+		xxstr_buf<1000> s;
 		g->wabout->labout.text(s.zfmt(
 			"fpassman v%s\n\n"
 			"Fast password manager"
 			, FPM_VER));
+
+#ifdef FF_WIN
 		g->wabout->lurl.text(FPM_HOMEPAGE);
+#else
+		s.zfmt("<a href=\"%s\">%s</a>"
+			, FPM_HOMEPAGE, FPM_HOMEPAGE);
+		g->wabout->lurl.markup(s.ptr);
+#endif
 	}
 	g->wabout->wnd.show(show);
 }

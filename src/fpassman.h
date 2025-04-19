@@ -1,5 +1,5 @@
 /** fpassman interfaces.
-Copyright (c) 2018 Simon Zolin
+2018 Simon Zolin
 */
 
 #pragma once
@@ -7,13 +7,15 @@ Copyright (c) 2018 Simon Zolin
 #include <ffsys/std.h>
 typedef ffbyte byte;
 typedef ffuint uint;
+typedef ffuint64 uint64;
+typedef ffint64 int64;
 
 
 // CORE
 
 #define FPM_VER_MAJOR  1
-#define FPM_VER_MINOR  3
-#define FPM_VER  "1.3"
+#define FPM_VER_MINOR  4
+#define FPM_VER  "1.4"
 
 struct fpm_conf {
 	ffstr loaddb;
@@ -104,6 +106,7 @@ struct fpm_dbiface {
 
 	int (*grp_add)(fpm_db *db, fpm_dbgroup *grp);
 	int (*grp_del)(fpm_db *db, uint i);
+	int (*grp_n)(fpm_db *db);
 };
 
 extern const struct fpm_dbiface *dbif;

@@ -6,7 +6,8 @@ Features:
 * Graphical UI
 * Console database accessor
 
-## How to use
+
+## How to use (GUI)
 
 ### Create a database
 
@@ -21,26 +22,29 @@ Features:
 2. Open database (File->Open...)
 3. Enter filename and password.  Press Open.
 
-### Search via console
+
+## How to use (CLI)
+
+### Search
 
 1. Start cmd.exe
 2. Execute `fpassman -d YOUR_DB -f YOUR_FILTER`.
 3. Enter password.
 4. A list of matched entries will be shown.
 
-### Add entry via console
+### Add entry
 
 1. Start cmd.exe
 2. Execute `fpassman -d YOUR_DB -a NAME USER PASS URL NOTES`.
 3. Enter password.
 
-### Edit entry via console
+### Edit entry
 
 1. Start cmd.exe
 2. Execute `fpassman -d YOUR_DB -e ID NAME USER PASS URL NOTES` where ID is the unique ID of the row you want to edit.
 3. Enter password.
 
-### Remove entry via console
+### Remove entry
 
 1. Start cmd.exe
 2. Execute `fpassman -d YOUR_DB -r ID` where ID is the unique ID of the row you want to delete.

@@ -3,6 +3,7 @@
 
 typedef struct wdb {
 	ffui_windowxx	wnd;
+	ffui_labelxx	ldb, lpw, lpw2;
 	ffui_editxx		edbfn;
 	ffui_editxx		edbpass, edbpass2;
 	ffui_buttonxx	bbrowse;
@@ -12,9 +13,9 @@ typedef struct wdb {
 #define _(m)  FFUI_LDR_CTL(wdb, m)
 const ffui_ldr_ctl wdb_ctls[] = {
 	_(wnd),
-	_(edbfn),
-	_(edbpass),
-	_(edbpass2),
+	_(ldb), _(edbfn),
+	_(lpw), _(edbpass),
+	_(lpw2), _(edbpass2),
 	_(bbrowse),
 	_(bdbdo),
 	FFUI_LDR_CTL_END
@@ -26,13 +27,13 @@ enum {
 	WDB_OPSAVE,
 };
 
-static void wdb_load(void)
+static void wdb_load()
 {
 	int r;
 	byte key[FPM_DB_KEYLEN];
 
 	wdb_close();
-	ffvecxx fn = g->wdb->edbfn.text();
+	xxvec fn = g->wdb->edbfn.text();
 
 	ffstr qpass = g->wdb->edbpass.text();
 	g->wdb->edbpass.text("");
@@ -45,7 +46,7 @@ static void wdb_load(void)
 	r = dbfif->open(g->dbx, (char*)fn.ptr, key);
 	if (r != 0) {
 		char buf[1024];
-		ffs_format_r0(buf, FF_COUNT(buf), "Error: %e: %E%Z", r, fferr_last());
+		ffs_format_r0(buf, FF_COUNT(buf), "Error: %d: %E%Z", r, fferr_last());
 		wmain_status(buf);
 		return;
 	}
@@ -56,15 +57,12 @@ static void wdb_load(void)
 	memcpy(g->saved_key, key, sizeof(key));
 	g->saved_key_valid = 1;
 
-	area_fill();
-
-	prep_tree();
-	grps_fill();
+	wmain_db_loaded();
 }
 
 static void wdb_save()
 {
-	ffvecxx pass = g->wdb->edbpass.text()
+	xxvec pass = g->wdb->edbpass.text()
 		, pass2 = g->wdb->edbpass2.text();
 
 	if (pass.len == 0 || !ffstr_eq2(&pass, &pass2)) {
@@ -82,7 +80,7 @@ static void wdb_save()
 	priv_clear(pass2.str());
 	pass2.free();
 
-	if (0 != dosave(ffvecxx(g->wdb->edbfn.text()).str().ptr, key))
+	if (0 != dosave(xxvec(g->wdb->edbfn.text()).str().ptr, key))
 		return;
 
 	g->wdb->wnd.show(0);
@@ -128,13 +126,14 @@ void wdb_open(uint flags)
 	g->db_op = WDB_OPLOAD;
 	g->wdb->wnd.title("Open database");
 	g->wdb->bdbdo.text("Open");
-	ffui_show(&g->wdb->edbpass2, 0);
 	g->wdb->edbfn.focus();
 	g->wdb->wnd.show(1);
-	ffui_wnd_setfront(&g->wdb->wnd);
+	ffui_show(&g->wdb->lpw2, 0);
+	ffui_show(&g->wdb->edbpass2, 0);
+	g->wdb->wnd.present();
 
 	if (flags) {
-		ffui_settextstr(&g->wdb->edbfn, &core->conf()->loaddb);
+		g->wdb->edbfn.text(core->conf()->loaddb);
 		g->wdb->edbpass.focus();
 	}
 }
@@ -144,10 +143,11 @@ void wdb_saveas()
 	g->db_op = WDB_OPSAVE;
 	g->wdb->wnd.title("Save database");
 	g->wdb->bdbdo.text("Save");
-	ffui_show(&g->wdb->edbpass2, 1);
 	g->wdb->edbfn.focus();
 	g->wdb->wnd.show(1);
-	ffui_wnd_setfront(&g->wdb->wnd);
+	ffui_show(&g->wdb->lpw2, 1);
+	ffui_show(&g->wdb->edbpass2, 1);
+	g->wdb->wnd.present();
 }
 
 void wdb_show(uint show)

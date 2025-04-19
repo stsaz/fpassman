@@ -163,6 +163,8 @@ fail:
 	return -1;
 }
 
+#define ffui_clipboard_settextstr(s)  ffui_clipbd_set((s)->ptr, (s)->len)
+
 static inline int ffui_clipbd_setfile(const char *const *names, ffsize cnt)
 {
 	HGLOBAL glob;

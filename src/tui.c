@@ -1,5 +1,5 @@
 /** Terminal UI.
-Copyright (c) 2018 Simon Zolin
+2018 Simon Zolin
 */
 
 #include <fpassman.h>
@@ -56,25 +56,26 @@ static int pm_arg(void *obj, ffstr s)
 /** Show help info. */
 static int pm_help()
 {
-	char buf[4096];
-	ssize_t n;
-	char *fn = NULL;
-	fffd f = FFFILE_NULL;
+	static const char help[] = "\
+Usage:\n\
+\n\
+    fpassman [OPTIONS] [-a NAME USER PASS URL NOTES] [-e ID NAME USER PASS URL NOTES] [-r ID]\n\
+\n\
+Options:\n\
+\n\
+ -db DBFILE         Set database file\n\
+ -filter STR        Set filter\n\
+\n\
+ -add NAME USER PASS URL NOTES\n\
+                    Add new entry\n\
+ -edit ID NAME USER PASS URL NOTES\n\
+                    Edit existing entry\n\
+ -remove ID         Remove existing row by its ID\n\
+\n\
+ -help              Print help info and exit\n\
+";
 
-	if (NULL == (fn = core->getpath(FFSTR_Z("help.txt"))))
-		goto done;
-
-	f = fffile_open(fn, FFFILE_READONLY);
-	if (f == FFFILE_NULL)
-		goto done;
-
-	n = fffile_read(f, buf, sizeof(buf));
-	if (n > 0)
-		ffstdout_write(buf, n);
-
-done:
-	fffile_close(f);
-	ffmem_free(fn);
+	ffstdout_write(help, FFS_LEN(help));
 	return CMD_ELAST;
 }
 
@@ -356,31 +357,31 @@ int main(int argc, char **argv)
 
 	fflog("fpassman v" FPM_VER);
 
-	if (NULL == (pm = ffmem_new(struct pm)))
+	if (!(pm = ffmem_new(struct pm)))
 		return 1;
 
-	if (NULL == (core = core_init()))
+	if (!(core = core_init()))
 		goto done;
-	if (0 != core->setroot(argv[0]))
-		goto done;
-
-	if (0 != pm_cmdline(argc, argv))
+	if (core->setroot(argv[0]))
 		goto done;
 
-	if (0 != core->loadconf())
+	if (pm_cmdline(argc, argv))
 		goto done;
 
-	if (NULL == (pm->db = dbif->create()))
+	if (core->loadconf())
 		goto done;
 
-	if (0 != tui_run())
+	if (!(pm->db = dbif->create()))
+		goto done;
+
+	if (tui_run())
 		goto done;
 
 	r = 0;
 
 done:
 	pm_free();
-	if (core != NULL)
+	if (core)
 		core_free();
 	return r;
 }

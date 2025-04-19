@@ -3,21 +3,19 @@
 
 typedef struct wentry {
 	ffui_windowxx	wnd;
-	ffui_editxx		title;
-	ffui_editxx		username;
-	ffui_editxx		password;
-	ffui_editxx		url;
-	ffui_editxx		notes;
-	ffui_editxx		tag;
-	ffui_buttonxx	b_ok;
-	ffui_buttonxx	copy_username;
-	ffui_buttonxx	copy_passwd;
+	ffui_labelxx	ltitle, luser, lpw, lurl, lgrp, lnotes;
+	ffui_editxx		title, username, password, url, tag;
+	ffui_textxx		notes;
+	ffui_buttonxx	b_ok, copy_username, copy_passwd;
+#ifdef FF_WIN
 	ffui_paned		pn_notes;
+#endif
 } wentry;
 
 #define _(m)  FFUI_LDR_CTL(wentry, m)
 const ffui_ldr_ctl wentry_ctls[] = {
 	_(wnd),
+	_(ltitle), _(luser), _(lpw), _(lurl), _(lgrp), _(lnotes),
 	_(title),
 	_(username),
 	_(password),
@@ -27,7 +25,9 @@ const ffui_ldr_ctl wentry_ctls[] = {
 	_(b_ok),
 	_(copy_username),
 	_(copy_passwd),
+#ifdef FF_WIN
 	_(pn_notes),
+#endif
 	FFUI_LDR_CTL_END
 };
 #undef _
@@ -37,31 +37,41 @@ void wentry_fill(const fpm_dbentry *ent)
 {
 	g->wentry->title.text(ent->title);
 	g->wentry->username.text(ent->username);
-	g->wentry->password.text(ent->passwd);
+	g->wentry->password.text(HIDDEN_TEXT);
 	g->wentry->url.text(ent->url);
-	g->wentry->notes.text(ent->notes);
+	g->wentry->notes.clear();
+	g->wentry->notes.add(ent->notes);
 
 	if (ent->grp != -1) {
 		const fpm_dbgroup *gr = dbif->grp(g->dbx, ent->grp);
 		g->wentry->tag.text(gr->name);
-	} else
+	} else {
 		g->wentry->tag.text("");
+	}
 
 	g->wentry->wnd.title("Edit Item");
+#ifdef FF_WIN
 	ShowWindow(g->wentry->wnd.h, SW_SHOWNOACTIVATE);
+#else
+	g->wentry->wnd.show(1);
+#endif
 }
 
-static void ent_copy(uint t)
+static void ent_copy(uint id)
 {
-	ffvecxx s;
-	switch (t) {
-	case H_USERNAME:
-		s = g->wentry->username.text();  break;
+	xxvec v;
+	xxstr s;
+	switch (id) {
+	case ENT_COPY_USERNAME:
+		s = v.acquire(g->wentry->username.text()).str();  break;
 
-	case H_PASSWD:
-		s = g->wentry->password.text();  break;
+	case ENT_COPY_PASSWORD:
+		if (!g->active_ent)
+			return;
+		s = g->active_ent->passwd;
+		break;
 	}
-	ffui_clipbd_set((char*)s.ptr, s.len);
+	ffui_clipboard_settextstr(&s);
 	wmain_status("Copied to clipboard");
 }
 
@@ -71,21 +81,21 @@ void wentry_clear()
 	g->wentry->username.text("");
 	g->wentry->password.text("");
 	g->wentry->url.text("");
-	g->wentry->notes.text("");
+	g->wentry->notes.clear();
 	g->wentry->tag.text("");
 	g->active_ent = NULL;
 	g->active_item = -1;
 }
 
 /** GUI -> DB entry */
-int wentry_set(fpm_dbentry *ent)
+void wentry_set(fpm_dbentry *ent)
 {
 	ent->title = g->wentry->title.text();
 	ent->username = g->wentry->username.text();
 	ent->passwd = g->wentry->password.text();
 	ent->url = g->wentry->url.text();
 	ent->notes = g->wentry->notes.text();
-	ffvecxx tag = g->wentry->tag.text();
+	xxvec tag = g->wentry->tag.text();
 	if (tag.len == 0)
 		ent->grp = -1;
 	else {
@@ -96,24 +106,12 @@ int wentry_set(fpm_dbentry *ent)
 			fpm_dbgroup gr1;
 			gr1.name = tag.str();
 			ent->grp = dbif->grp_add(g->dbx, &gr1);
-			if (ent->grp == -1)
-				goto fail;
 			gr = dbif->grp(g->dbx, ent->grp);
 			tag.reset();
 
 			wmain_grp_add(gr->name);
 		}
 	}
-
-	return 0;
-
-fail:
-	ffstr_free(&ent->title);
-	ffstr_free(&ent->username);
-	ffstr_free(&ent->passwd);
-	ffstr_free(&ent->url);
-	ffstr_free(&ent->notes);
-	return 1;
 }
 
 void wentry_update()
@@ -132,7 +130,7 @@ void wentry_new()
 	g->wentry->wnd.title("New Item");
 	g->wentry->b_ok.text("&Create");
 	ffui_show(&g->wentry->wnd, 1);
-	ffui_wnd_setfront(&g->wentry->wnd);
+	g->wentry->wnd.present();
 }
 
 static void wentry_action(ffui_window *wnd, int id)
@@ -149,17 +147,18 @@ static void wentry_action(ffui_window *wnd, int id)
 			g->wentry->wnd.title("Edit Item");
 			g->wentry->b_ok.text("&Apply");
 
-			g->active_ent = ent_ins();
+			fpm_dbentry ent;
+			ent.grp = -1;
+			wentry_set(&ent);
+			ent_ins(&ent);
 			break;
 		}
 		ent_modify();
 		break;
 
-	case ENT_COPYUSENAME:
-		ent_copy(H_USERNAME);  break;
-
-	case ENT_COPYPASSWD:
-		ent_copy(H_PASSWD);  break;
+	case ENT_COPY_USERNAME:
+	case ENT_COPY_PASSWORD:
+		ent_copy(id);  break;
 	}
 }
 

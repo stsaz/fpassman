@@ -24,6 +24,7 @@ endif
 
 CFLAGS += -fno-strict-aliasing -fvisibility=hidden \
 	-Wall -Wno-multichar \
+	-DFFBASE_MEM_ASSERT -DFFBASE_HAVE_FFERR_STR \
 	-MMD -MP \
 	-I$(FPASSMAN)/src -I$(FFSYS) -I$(FFBASE) -I$(FFPACK) -I$(CRYPTOLIB3)
 ifeq "$(DEBUG)" "1"
@@ -36,10 +37,17 @@ LINKFLAGS += \
 	-fvisibility=hidden -L$(FFPACK_BIN)
 
 
-OSBINS :=
+OSBINS := fpassman-gui
 ifeq "$(OS)" "windows"
 	OSBINS := fpassman-gui.exe
 endif
+
+default: build
+ifneq "$(DEBUG)" "1"
+	$(SUBMAKE) strip
+endif
+	$(SUBMAKE) install
+	$(SUBMAKE) package
 
 build: $(BIN) $(OSBINS)
 
@@ -59,22 +67,10 @@ OBJ := \
 	$(C) $(CFLAGS) $< -o $@
 
 
-%.o: $(FPASSMAN)/src/gui/%.cpp
-	$(CXX) $(CXXFLAGS) -I$(FFGUI) $< -o $@
-%.o: $(FFGUI)/ffgui/winapi/%.c
-	$(C) $(CFLAGS) -I$(FFGUI) $< -o $@
+exe.coff: $(FPASSMAN)/res/exe.rc $(FPASSMAN)/res/fpassman.ico
+	$(WINDRES) $< $@
 
-fpassman.coff: $(FPASSMAN)/fpassman.rc $(FPASSMAN)/fpassman.ico
-	$(WINDRES) -I$(FPASSMAN)/src -I$(FFSYS) -I$(FFBASE) $(FPASSMAN)/fpassman.rc $@
-
-BINGUI_O := $(OBJ) \
-	gui.o \
-	ffgui-winapi-loader.o \
-	ffgui-winapi.o \
-	fpassman.coff \
-	$(CRYPTOLIB3_BIN)/AES.a
-fpassman-gui.exe: $(BINGUI_O)
-	$(LINKXX) $+ $(LINKFLAGS) -lshell32 -luxtheme -lcomctl32 -lcomdlg32 -lgdi32 -lws2_32 -lole32 -luuid -lz-ffpack -mwindows -o $@
+include $(FPASSMAN)/src/gui/Makefile
 
 
 #
@@ -82,14 +78,14 @@ BIN_O = $(OBJ) \
 	tui.o \
 	$(CRYPTOLIB3_BIN)/AES.a
 ifeq "$(OS)" "windows"
-	BIN_O += fpassman.coff
+	BIN_O += exe.coff
 endif
 $(BIN): $(BIN_O)
 	$(LINK) $+ $(LINKFLAGS) $(LINK_RPATH_ORIGIN) -lz-ffpack -o $@
 
 
 clean:
-	rm -f $(BIN) $(OSBINS) *.debug $(OBJ) fpassman.coff
+	rm -f $(BIN) $(OSBINS) *.debug $(OBJ) exe.coff
 
 strip:
 	strip $(BIN) $(OSBINS)
@@ -99,24 +95,18 @@ install:
 	$(CP) \
 		$(FFPACK_BIN)/libz-ffpack.$(SO) \
 		$(BIN) \
-		$(FPASSMAN)/fpassman.conf $(FPASSMAN)/help.txt \
+		$(FPASSMAN)/fpassman.conf \
 		$(INST_DIR)/
 	$(CP) $(FPASSMAN)/README.md $(INST_DIR)/README.txt
 
 ifeq "$(OS)" "windows"
-	$(CP) \
-		fpassman-gui.exe \
-		$(FPASSMAN)/src/gui/fpassman.gui \
-		$(INST_DIR)/
+	$(CP) fpassman-gui.exe $(INST_DIR)/
+	$(CP) $(FPASSMAN)/src/gui/ui-winapi.conf $(INST_DIR)/fpassman.gui
 	unix2dos $(INST_DIR)/*.txt $(INST_DIR)/*.conf $(INST_DIR)/*.gui
+else
+	$(CP) fpassman-gui $(INST_DIR)/
+	$(CP) $(FPASSMAN)/src/gui/ui-gtk.conf $(INST_DIR)/fpassman.gui
 endif
-
-build-install: build
-	$(SUBMAKE) install
-
-strip-install: build
-	$(SUBMAKE) strip
-	$(SUBMAKE) install
 
 # package
 PKG_VER := 0.1
@@ -131,5 +121,5 @@ endif
 package:
 	$(PKG_PACKER) fpassman-$(PKG_VER)-$(OS)-$(PKG_ARCH).$(PKG_EXT) $(INST_DIR)
 
-install-package: strip-install
+release: default
 	$(SUBMAKE) package

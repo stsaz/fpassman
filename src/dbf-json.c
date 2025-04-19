@@ -1,6 +1,6 @@
 /** Database storage format.
 JSON -> deflate -> AES256-CBC with SHA256 key.
-Copyright (c) 2018 Simon Zolin
+2018 Simon Zolin
 */
 
 #include <fpassman.h>

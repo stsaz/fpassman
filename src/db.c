@@ -1,5 +1,5 @@
 /** Database operations.
-Copyright (c) 2018 Simon Zolin
+2018 Simon Zolin
 */
 
 #include <fpassman.h>
@@ -20,23 +20,6 @@ struct fpm_db {
 	ffvec grps; //fpm_dbgroup[]
 	fflist ents; //dbentry[]
 };
-
-
-// DB interface
-static fpm_db* db_create(void);
-static fpm_dbentry* db_ent(uint cmd, fpm_db *db, fpm_dbentry *ent);
-static void db_fin(fpm_db *db);
-static int db_find(fpm_dbentry *ent, const char *search, size_t len);
-static fpm_dbgroup* db_grp(fpm_db *db, uint i);
-static int db_grp_find(fpm_db *db, const char *name, size_t len);
-static int db_grp_add(fpm_db *db, fpm_dbgroup *grp);
-static int db_grp_del(fpm_db *db, uint i);
-static const struct fpm_dbiface dbiface = {
-	&db_create, &db_fin, &db_ent, &db_find,
-	&db_grp, &db_grp_find, &db_grp_add, &db_grp_del
-};
-const struct fpm_dbiface *dbif = &dbiface;
-
 
 static void dbentry_free(dbentry *e);
 
@@ -216,7 +199,7 @@ static int db_find(fpm_dbentry *ent, const char *search, size_t len)
 
 static fpm_dbgroup* db_grp(fpm_db *db, uint i)
 {
-	if (i == db->grps.len)
+	if (i >= db->grps.len)
 		return NULL;
 	fpm_dbgroup *g = (void*)db->grps.ptr;
 	return &g[i];
@@ -235,9 +218,8 @@ static int db_grp_find(fpm_db *db, const char *name, size_t len)
 static int db_grp_add(fpm_db *db, fpm_dbgroup *grp)
 {
 	fpm_dbgroup *g = ffvec_pushT(&db->grps, fpm_dbgroup);
-	if (g == NULL)
-		return -1;
-	*g = *grp;
+	g->name.ptr = ffsz_dupstr(&grp->name);
+	g->name.len = grp->name.len;
 	return db->grps.len - 1;
 }
 
@@ -255,3 +237,14 @@ static int db_grp_del(fpm_db *db, uint i)
 	ffslice_rm((ffslice*)&db->grps, i, 1, sizeof(fpm_dbgroup));
 	return 0;
 }
+
+static int db_grp_n(fpm_db *db)
+{
+	return db->grps.len;
+}
+
+static const struct fpm_dbiface dbiface = {
+	db_create, db_fin, db_ent, db_find,
+	db_grp, db_grp_find, db_grp_add, db_grp_del, db_grp_n
+};
+const struct fpm_dbiface *dbif = &dbiface;
