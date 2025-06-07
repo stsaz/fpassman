@@ -119,7 +119,7 @@ void wentry_update()
 	if (g->entry_creating) {
 		g->entry_creating = 0;
 		g->wentry->wnd.title("Edit Item");
-		g->wentry->b_ok.text("&Apply");
+		g->wentry->b_ok.text("Apply");
 	}
 }
 
@@ -128,7 +128,7 @@ void wentry_new()
 	g->entry_creating = 1;
 	wentry_clear();
 	g->wentry->wnd.title("New Item");
-	g->wentry->b_ok.text("&Create");
+	g->wentry->b_ok.text("Create");
 	ffui_show(&g->wentry->wnd, 1);
 	g->wentry->wnd.present();
 }
@@ -145,7 +145,7 @@ static void wentry_action(ffui_window *wnd, int id)
 		if (g->entry_creating) {
 			g->entry_creating = 0;
 			g->wentry->wnd.title("Edit Item");
-			g->wentry->b_ok.text("&Apply");
+			g->wentry->b_ok.text("Apply");
 
 			fpm_dbentry ent;
 			ent.grp = -1;

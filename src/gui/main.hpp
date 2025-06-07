@@ -73,7 +73,7 @@ static void ent_modify()
 	dbif->ent(FPM_DB_MOD, g->dbx, ent);
 
 	wentry_set(ent);
-	g->wmain->area.update(idx, 1);
+	g->wmain->area.update(idx, 0);
 	wmain_status("Item updated");
 }
 
