@@ -1,0 +1,7 @@
+[Desktop Entry]
+Comment=Password Manager
+Exec=fpassman-gui %F
+GenericName=Password Manager
+Name=fpassman
+Type=Application
+Categories=Other

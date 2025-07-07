@@ -59,10 +59,6 @@ void wmain_status(const char *s)
 	g->wmain->stbar.text(s);
 }
 
-void wmain_grp_add(ffstr name)
-{
-}
-
 static void ent_modify()
 {
 	int idx;
@@ -312,6 +308,11 @@ static void groups_fill()
 	}
 
 	g->wmain->cbgroups.set(0);
+}
+
+void wmain_grp_add(const char *name)
+{
+	g->wmain->cbgroups.add(name);
 }
 
 void wmain_db_loaded()

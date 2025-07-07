@@ -37,7 +37,7 @@ void wentry_fill(const fpm_dbentry *ent)
 {
 	g->wentry->title.text(ent->title);
 	g->wentry->username.text(ent->username);
-	g->wentry->password.text(HIDDEN_TEXT);
+	g->wentry->password.text(ent->passwd);
 	g->wentry->url.text(ent->url);
 	g->wentry->notes.clear();
 	g->wentry->notes.add(ent->notes);
@@ -109,7 +109,7 @@ void wentry_set(fpm_dbentry *ent)
 			gr = dbif->grp(g->dbx, ent->grp);
 			tag.reset();
 
-			wmain_grp_add(gr->name);
+			wmain_grp_add(gr->name.ptr);
 		}
 	}
 }

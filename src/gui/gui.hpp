@@ -17,7 +17,7 @@ void wmain_show();
 void wmain_init();
 void wmain_filter(int grp_id, ffstr search);
 void wmain_status(const char *s);
-void wmain_grp_add(ffstr name);
+void wmain_grp_add(const char *name);
 
 struct wdb;
 void wdb_init();
