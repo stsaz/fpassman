@@ -4,7 +4,8 @@
 typedef struct wentry {
 	ffui_windowxx	wnd;
 	ffui_labelxx	ltitle, luser, lpw, lurl, lgrp, lnotes;
-	ffui_editxx		title, username, password, url, tag;
+	ffui_editxx		title, username, password, url;
+	ffui_comboboxxx	grp;
 	ffui_textxx		notes;
 	ffui_buttonxx	b_ok, copy_username, copy_passwd;
 #ifdef FF_WIN
@@ -20,8 +21,8 @@ const ffui_ldr_ctl wentry_ctls[] = {
 	_(username),
 	_(password),
 	_(url),
+	_(grp),
 	_(notes),
-	_(tag),
 	_(b_ok),
 	_(copy_username),
 	_(copy_passwd),
@@ -31,6 +32,16 @@ const ffui_ldr_ctl wentry_ctls[] = {
 	FFUI_LDR_CTL_END
 };
 #undef _
+
+static void grp_fill()
+{
+	g->wentry->grp.clear();
+	g->wentry->grp.text("");
+	const fpm_dbgroup *gr;
+	for (uint i = 0;  (gr = dbif->grp(g->dbx, i));  i++) {
+		g->wentry->grp.add(gr->name.ptr);
+	}
+}
 
 /** DB entry -> GUI */
 void wentry_fill(const fpm_dbentry *ent)
@@ -42,12 +53,9 @@ void wentry_fill(const fpm_dbentry *ent)
 	g->wentry->notes.clear();
 	g->wentry->notes.add(ent->notes);
 
-	if (ent->grp != -1) {
-		const fpm_dbgroup *gr = dbif->grp(g->dbx, ent->grp);
-		g->wentry->tag.text(gr->name);
-	} else {
-		g->wentry->tag.text("");
-	}
+	grp_fill();
+	if (ent->grp != -1)
+		g->wentry->grp.set(ent->grp);
 
 	g->wentry->wnd.title("Edit Item");
 #ifdef FF_WIN
@@ -82,7 +90,7 @@ void wentry_clear()
 	g->wentry->password.text("");
 	g->wentry->url.text("");
 	g->wentry->notes.clear();
-	g->wentry->tag.text("");
+	g->wentry->grp.set(-1);
 	g->active_ent = NULL;
 	g->active_item = -1;
 }
@@ -95,10 +103,10 @@ void wentry_set(fpm_dbentry *ent)
 	ent->passwd = g->wentry->password.text();
 	ent->url = g->wentry->url.text();
 	ent->notes = g->wentry->notes.text();
-	xxvec tag = g->wentry->tag.text();
-	if (tag.len == 0)
+	xxvec tag = g->wentry->grp.text();
+	if (tag.len == 0) {
 		ent->grp = -1;
-	else {
+	} else {
 		fpm_dbgroup *gr;
 		ent->grp = dbif->grp_find(g->dbx, (char*)tag.ptr, tag.len);
 
@@ -127,6 +135,7 @@ void wentry_new()
 {
 	g->entry_creating = 1;
 	wentry_clear();
+	grp_fill();
 	g->wentry->wnd.title("New Item");
 	g->wentry->b_ok.text("Create");
 	ffui_show(&g->wentry->wnd, 1);
@@ -160,11 +169,6 @@ static void wentry_action(ffui_window *wnd, int id)
 	case ENT_COPY_PASSWORD:
 		ent_copy(id);  break;
 	}
-}
-
-void wentry_show(uint show)
-{
-	ffui_show(&g->wentry->wnd, show);
 }
 
 void wentry_init()

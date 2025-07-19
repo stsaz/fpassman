@@ -32,7 +32,6 @@ void wentry_new();
 void wentry_clear();
 void wentry_update();
 void wentry_set(fpm_dbentry *ent);
-void wentry_show(uint show);
 
 struct wfind;
 void wfind_init();
